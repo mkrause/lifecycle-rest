@@ -1,12 +1,19 @@
 
 import env from '../util/env.js';
 import merge from '../util/merge.js';
-import * as ObjectUtil from '../util/ObjectUtil.js';
 import uuid from 'uuid';
+import $msg from 'message-tag';
 import $uri from 'uri-tag';
 
+import ItemResource from './ItemResource.js';
 
-const collectionDefaults = {
+import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
+import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
+
+import * as SchemaUtil from './util/SchemaUtil.js';
+
+
+const collectionDefaults = agent => ({
     store: [],
     uri: '',
     methods: {
@@ -28,7 +35,7 @@ const collectionDefaults = {
         },
     },
     resources: {},
-};
+});
 
 // Redux action creators for collection resources. Compatible with redux-thunk.
 const reduxActions = {
@@ -72,9 +79,6 @@ const reduxActions = {
                     path: cursor,
                     status: 'ready',
                     value: collection,
-                    param: {
-                        merge: true,
-                    },
                 });
                 
                 return collection;
@@ -221,12 +225,44 @@ const reduxActions = {
     },
 };
 
+// TODO: make this configurable
+const parseCollectionResponse = response => {
+    if (Array.isArray(response)) {
+        return response;
+    } else {
+        throw new TypeError($msg`Unknown collection response format: ${response}`);
+    }
+};
+
+const loaders = {
+    list: (EntityType, spec) => (collection, ...options) => {
+        const CollectionType = EntityType.Collection;
+        
+        return LoadablePromise.from(
+            collection,
+            spec.methods.list(collection, ...options)
+                .then(response => {
+                    if (response instanceof Collection) {
+                        return response;
+                    }
+                    
+                    const instanceEncoded = parseCollectionResponse(response.data);
+                    //const collectionUpdated = SchemaUtil.decode(CollectionType, instanceEncoded);
+                    const collectionUpdated = SchemaUtil.decodeCollection(EntityType, instanceEncoded);
+                    
+                    return collectionUpdated;
+                })
+        );
+    },
+};
+
 const CollectionResource = (EntityType, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
-    const label = path[path.length - 1]; // Last path item (i.e. the key of the current resource)
+    // Last path item (i.e. the key of the current resource)
+    const label = parentSpec === null ? null : path[path.length - 1];
     
-    const collectionDefaultsWithContext = merge(collectionDefaults, {
-        store: [...parentSpec.store, label],
-        uri: `${parentSpec.uri}/${label}`,
+    const collectionDefaultsWithContext = merge(collectionDefaults(agent), {
+        store: parentSpec === null ? [] : [...parentSpec.store, label],
+        uri: parentSpec === null ? '' : `${parentSpec.uri}/${label}`,
     });
     const spec = merge(collectionDefaultsWithContext, collectionSpec);
     
@@ -244,22 +280,23 @@ const CollectionResource = (EntityType, collectionSpec) => ({ agent, rootSpec, p
     const getEntry = index => {
         const entryPath = [...path, index];
         
-        const methods = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
-            const resourceContext = {
-                agent,
-                rootSpec,
-                parentSpec: spec,
-                path: [...entryPath, resourceKey],
-            };
-            return resource(resourceContext);
+        const itemContext = {
+            agent,
+            rootSpec,
+            parentSpec: spec,
+            path: [...path, index],
+        };
+        
+        return ItemResource({
+            resources: spec.resources,
         });
-        
-        methods._path = entryPath;
-        
-        return methods;
     };
     
-    Object.assign(getEntry, methods);
+    // Object.assign(getEntry, methods);
+    
+    Object.assign(getEntry, {
+        list: loaders.list(EntityType, spec),
+    });
     
     // Common interface to get a value from a response for this API resource type
     //getEntry._valueFromResponse = collectionFromResponse(EntityType);

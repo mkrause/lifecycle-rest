@@ -1,8 +1,8 @@
 
 import env from '../util/env.js';
 import merge from '../util/merge.js';
-import * as ObjectUtil from '../util/ObjectUtil.js';
 
+import ItemResource from './ItemResource.js';
 import CollectionResource from './CollectionResource.js';
 
 
@@ -19,17 +19,14 @@ const RestApi = (agent, apiSpec) => {
     const context = {
         agent,
         rootSpec: spec,
-        parentSpec: spec,
+        parentSpec: null,
         path: [], // The current path in the API spec tree
     };
     
-    // Return an object of all resources specified in the apiSpec
-    return ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
-        const resourceContext = { ...context, path: [...context.path, resourceKey] };
-        return resource(resourceContext);
-    });
+    return ItemResource(spec)(context);
 };
 
+RestApi.Item = ItemResource;
 RestApi.Collection = CollectionResource;
 
 export default RestApi;

@@ -6,7 +6,9 @@ import axios from 'axios';
 
 const optionsDefaults = {
     baseUrl: undefined,
+    
     headers: {
+        'User-Agent': undefined,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         //'Authorization': '...',
