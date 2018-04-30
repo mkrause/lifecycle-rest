@@ -63,7 +63,7 @@ describe('RestApi', () => {
                 },
             });
             
-            const item = Loadable(new User.Collection());
+            const item = Loadable(null);
             
             const subscriber = sinon.stub()
                 .callsFake(item => {
@@ -82,7 +82,7 @@ describe('RestApi', () => {
             
             sinon.assert.calledTwice(subscriber);
             
-            sinon.assert.calledWith(subscriber.firstCall, sinon.match.instanceOf(User.Collection));
+            sinon.assert.calledWith(subscriber.firstCall, sinon.match({}));
             sinon.assert.calledWith(subscriber.firstCall, sinon.match(users => {
                 return [
                     users[status].ready === false,
