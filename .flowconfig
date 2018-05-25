@@ -1,0 +1,32 @@
+[include]
+
+
+[ignore]
+<PROJECT_ROOT>/lib-esm/.*
+<PROJECT_ROOT>/lib-cjs/.*
+
+
+[libs]
+
+
+[options]
+
+emoji=true
+
+# Include warnings in the CLI output (can also just use --include-warnings on the CLI)
+#include_warnings=true
+
+# Enable extended `export` syntax
+esproposal.export_star_as=enable
+
+# Treat function params as const
+experimental.const_params=true
+
+# Silence warnings about `require()` with a dynamic expression
+#module.ignore_non_literal_requires=true
+
+# Inform flow that babel will "use strict" to all transpiled files
+module.use_strict=true
+
+suppress_comment=\\(.\\|\n\\)*\\$FlowFixMe
+suppress_comment=\\(.\\|\n\\)*\\$ExpectError

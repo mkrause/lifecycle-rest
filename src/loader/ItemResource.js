@@ -11,6 +11,8 @@ const itemDefaults = {
     resources: {},
 };
 
+// TODO: support methods (get, put, patch, but *not* list-specific methods like post, delete)
+
 const ItemResource = itemSpec => ({ agent, rootSpec, parentSpec, path }) => {
     // Last path item (i.e. the key of the current resource)
     const label = parentSpec === null ? null : path[path.length - 1];

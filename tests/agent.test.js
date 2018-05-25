@@ -1,3 +1,6 @@
+// @flow
+declare var describe : Function;
+declare var it : Function;
 
 import { expect } from 'chai';
 import sinon from 'sinon';

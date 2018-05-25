@@ -1,8 +1,12 @@
+// @flow
+declare var describe : Function;
+declare var it : Function;
 
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import uri from 'uri-tag';
+import $uri from 'uri-tag';
+import $msg from 'message-tag';
 import createAgent from '../../src/agent.js';
 import RestApi from '../../src/loader/RestApi.js';
 
@@ -11,6 +15,7 @@ import { Entity, Collection } from '@mkrause/lifecycle-immutable';
 
 
 describe('RestApi', () => {
+    /*
     class User extends Entity {
         static Collection = class UserCollection extends Collection {
             constructor(entries, meta) {
@@ -31,7 +36,70 @@ describe('RestApi', () => {
             super(instance, meta, User.schema);
         }
     }
+    */
     
+    describe('item resource', () => {
+        // TODO
+    });
+    
+    describe('collection resource', () => {
+        it('should support list()', async () => {
+            const agentMock = createAgent({
+                adapter: request => {
+                    const { method, baseUrl, url } = request;
+                    
+                    if (url === '/users') {
+                        // Simulate an async request
+                        return new Promise(resolve => {
+                            setTimeout(() => {
+                                resolve({
+                                    data: [
+                                        { user_id: 'user42', name: 'John' },
+                                        { user_id: 'user43', name: 'Alice' },
+                                    ],
+                                });
+                            }, 0);
+                        });
+                    } else {
+                        throw new Error($msg`Unknown route ${url}`);
+                    }
+                },
+            });
+            
+            class UsersCollection {
+                static decode(instanceEncoded) {
+                    return instanceEncoded.reduce(
+                        (acc, item) => {
+                            return { ...acc, [item.user_id]: item };
+                        },
+                        {}
+                    );
+                }
+            }
+            
+            const api = RestApi(agentMock, {
+                store: ['app'],
+                resources: {
+                    users: RestApi.Collection(UsersCollection, {
+                        methods: {},
+                    }),
+                },
+            });
+            
+            // const users = await api.users.list();
+            api.users.list()
+                .subscribe(item => {
+                    console.log('x', item);
+                });
+            
+            // expect(users).to.deep.equal({
+            //     user42: { user_id: 'user42', name: 'John' },
+            //     user43: { user_id: 'user43', name: 'Alice' },
+            // });
+        });
+    });
+    
+    /*
     describe('collection resource', () => {
         it('should support list()', async () => {
             const agentMock = createAgent({
@@ -117,4 +185,5 @@ describe('RestApi', () => {
             expect(result.get('1').get('name')).to.equal('John');
         });
     });
+    */
 });

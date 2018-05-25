@@ -16,6 +16,13 @@ import * as SchemaUtil from './util/SchemaUtil.js';
 const collectionDefaults = agent => ({
     store: [],
     uri: '',
+    parse: response => {
+        if (Array.isArray(response)) {
+            return response;
+        } else {
+            throw new TypeError($msg`Unknown collection response format: ${response}`);
+        }
+    },
     methods: {
         query: async (spec, handleResponse, query) => {
             return handleResponse(await agent.get(spec.uri, { params: query }));
@@ -231,30 +238,21 @@ const reduxActions = {
     },
 };
 
-// TODO: make this configurable
-const parseCollectionResponse = response => {
-    if (Array.isArray(response)) {
-        return response;
-    } else {
-        throw new TypeError($msg`Unknown collection response format: ${response}`);
-    }
-};
-
 const loaders = {
-    list: (EntityType, spec) => (collection, ...options) => {
-        const CollectionType = EntityType.Collection;
-        
+    list: (Schema, spec) => (collectionCurrent = Loadable(null), ...options) => {
         return LoadablePromise.from(
-            collection,
-            spec.methods.list(collection, ...options)
+            collectionCurrent,
+            spec.methods.list(spec, ...options)
                 .then(response => {
-                    if (response instanceof Collection) {
+                    if (typeof Schema === 'function' && response instanceof Schema) {
                         return response;
                     }
                     
-                    const instanceEncoded = parseCollectionResponse(response.data);
-                    //const collectionUpdated = SchemaUtil.decode(CollectionType, instanceEncoded);
-                    const collectionUpdated = SchemaUtil.decodeCollection(EntityType, instanceEncoded);
+                    // Parse the response
+                    const instanceEncoded = spec.parse(response.data);
+                    
+                    // Parse the encoded instance as an instance of the schema
+                    const collectionUpdated = Schema.decode(instanceEncoded);
                     
                     return collectionUpdated;
                 })
@@ -262,7 +260,7 @@ const loaders = {
     },
 };
 
-const CollectionResource = (EntityType, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
+const CollectionResource = (Schema, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
     // Last path item (i.e. the key of the current resource)
     const label = parentSpec === null ? null : path[path.length - 1];
     
@@ -274,12 +272,12 @@ const CollectionResource = (EntityType, collectionSpec) => ({ agent, rootSpec, p
     
     // Collection methods
     const methods = {
-        dispose: reduxActions.dispose(EntityType, spec),
-        list: reduxActions.list(EntityType, spec),
-        create: reduxActions.create(EntityType, spec),
-        get: reduxActions.get(EntityType, spec),
-        update: reduxActions.update(EntityType, spec),
-        delete: reduxActions.delete(EntityType, spec),
+        dispose: reduxActions.dispose(Schema, spec),
+        list: reduxActions.list(Schema, spec),
+        create: reduxActions.create(Schema, spec),
+        get: reduxActions.get(Schema, spec),
+        update: reduxActions.update(Schema, spec),
+        delete: reduxActions.delete(Schema, spec),
     };
     
     // Take an index into this collection, and return a new API resource representing that entry resource
@@ -301,11 +299,11 @@ const CollectionResource = (EntityType, collectionSpec) => ({ agent, rootSpec, p
     // Object.assign(getEntry, methods);
     
     Object.assign(getEntry, {
-        list: loaders.list(EntityType, spec),
+        list: loaders.list(Schema, spec),
     });
     
     // Common interface to get a value from a response for this API resource type
-    //getEntry._valueFromResponse = collectionFromResponse(EntityType);
+    //getEntry._valueFromResponse = collectionFromResponse(Schema);
     //getEntry._spec = spec;
     
     //console.log('col', spec, getEntry);
