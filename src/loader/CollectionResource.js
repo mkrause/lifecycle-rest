@@ -17,7 +17,10 @@ const collectionDefaults = agent => ({
     store: [],
     uri: '',
     methods: {
-        list: (spec, { hint = null, params = {}} = {}) => {
+        query: async (spec, handleResponse, query) => {
+            return handleResponse(await agent.get(spec.uri, { params: query }));
+        },
+        list: (spec, { hint = null } = {}) => {
             return agent.get(spec.uri);
         },
         create: (spec, entity) => {
@@ -48,6 +51,9 @@ const reduxActions = {
         dispatch({ type: 'api.dispose', path: cursor });
         
         return Promise.resolve();
+    },
+    query: () => {
+        // TODO
     },
     list: (EntityType, spec) => (...args) => dispatch => {
         const requestId = uuid();

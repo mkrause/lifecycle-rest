@@ -5,6 +5,10 @@
 //     Api.createAgent({
 //         uri: "http://example.com/api",
 //     });
+
+/*
+FIXME
+
 export { default as createAgent } from './Agent.js';
 
 export { restApi, collection } from './RestApi.js';
@@ -12,3 +16,4 @@ export { restApi, collection } from './RestApi.js';
 export { update } from './redux.js';
 
 export { withStatus, loader } from './component_util.js';
+*/
