@@ -9,248 +9,82 @@ import $uri from 'uri-tag';
 import ItemResource from './ItemResource.js';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
+import type { LoadableT } from '@mkrause/lifecycle-loader';
 import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 
 import StorablePromise from './StorablePromise.js';
 
 
+// FIXME: SchemaI should be a constructor function with static properties and instance properties.
+// Need to figure out how to express this in flow
+type InstanceI = LoadableT;
 type SchemaI = {
+    empty : () => InstanceI,
+    
     decode : (instanceEncoded) => {};
 };
 
 const collectionDefaults = agent => ({
     store: [],
     uri: '',
-    parse: (method, response) => {
-        const body = response.data;
-        if (Array.isArray(body)) {
-            return body;
+    parse: response => {
+        if (Array.isArray(response)) {
+            return response;
         } else {
-            throw new TypeError($msg`Unknown collection response format: ${body}`);
+            throw new TypeError($msg`Unknown collection response format: ${response}`);
         }
     },
     methods: {
-        query: async (spec, handleResponse, query) => {
-            return handleResponse(await agent.get(spec.uri, { params: query }));
+        query: async (spec, decode, query) => {
+            const items = decode(await agent.get(spec.uri, { params: query }));
+            
+            // Note: user-defined implementations will likely add more info here, like counts for
+            // total/filtered records.
+            const queryResult = {
+                items,
+            };
+            
+            return queryResult;
         },
         list: (spec, { hint = null } = {}) => {
             return agent.get(spec.uri);
         },
-        create: (spec, entity) => {
-            return agent.post(`${spec.uri}`).send(entity.toJSON());
-        },
-        get: (spec, index) => {
-            return agent.get(`${spec.uri}/${index}`);
-        },
-        update: (spec, index, entity) => {
-            // TODO: prefer to use PATCH (if available)
-            return agent.put(`${spec.uri}/${index}`).send(entity.toJSON());
-        },
-        delete: (spec, index) => {
-            return agent.delete(`${spec.uri}/${index}`);
-        },
+        // create: (spec, entity) => {
+        //     return agent.post(`${spec.uri}`).send(entity.toJSON());
+        // },
+        // get: (spec, index) => {
+        //     return agent.get(`${spec.uri}/${index}`);
+        // },
+        // update: (spec, index, entity) => {
+        //     // TODO: prefer to use PATCH (if available)
+        //     return agent.put(`${spec.uri}/${index}`).send(entity.toJSON());
+        // },
+        // delete: (spec, index) => {
+        //     return agent.delete(`${spec.uri}/${index}`);
+        // },
     },
     resources: {},
 });
 
-// Redux action creators for collection resources. Compatible with redux-thunk.
-const reduxActions = {
-    // Clear an item from the store
-    // Note: this does not actually delete the item
-    dispose: (EntityType, spec) => (...args) => dispatch => {
-        // TODO: need to invalidate the Collection (update status)
-        
-        const cursor = spec.store;
-        dispatch({ type: 'api.dispose', path: cursor });
-        
-        return Promise.resolve();
-    },
-    query: () => {
-        // TODO
-    },
-    list: (EntityType, spec) => (...args) => dispatch => {
-        const requestId = uuid();
-        
-        const cursor = spec.store;
-        const emptyCollection = new EntityType.Collection([], { status: 'pending' });
-        
-        dispatch({ type: 'api.load', requestId, path: cursor, status: 'pending', value: emptyCollection });
-        
-        return spec.methods.list(spec, ...args)
-            .then(response => {
-                let collection;
-                
-                if (response.body instanceof Collection) {
-                    collection = response.body;
-                } else {
-                    // Expected collection response format: `{ metadata : Object, items : Array<Item> }`
-                    if (!response.body.hasOwnProperty('items') || !response.body.hasOwnProperty('metadata')) {
-                        throw new TypeError('Invalid response format:', response.body);
-                    }
-                    
-                    const { metadata, items } = response.body;
-                    collection = collectionFromResponse(EntityType)(items);
-                }
-                
-                dispatch({
-                    type: 'api.load',
-                    requestId,
-                    path: cursor,
-                    status: 'ready',
-                    value: collection,
-                });
-                
-                return collection;
-            })
-            .catch(reason => {
-                const cursor = spec.store;
-                dispatch({
-                    type: 'api.load', requestId, path: cursor, status: 'error', reason,
-                    value: new EntityType.Collection([], { status: 'error', reason }),
-                });
-                
-                if (mode === 'development') {
-                    console.error(reason);
-                }
-                return Promise.reject({ path: cursor, reason });
-            });
-    },
-    create: (EntityType, spec) => (entity, ...args) => dispatch => {
-        const requestId = uuid();
-        const cursor = spec.store;
-        
-        return spec.methods.create(spec, entity, ...args)
-            .then(response => {
-                const responseValue = response.body;
-                const [index, entity] = makeEntry(EntityType, responseValue);
-                
-                dispatch({ type: 'api.load', requestId, path: [...cursor, index], status: 'ready', value: entity });
-                
-                return { index, entity };
-            })
-            .catch(reason => {
-                if (mode === 'development') {
-                    console.error(reason);
-                }
-                return Promise.reject({ reason });
-            });
-    },
-    get: (EntityType, spec) => (index, ...args) => dispatch => {
-        const requestId = uuid();
-        const cursor = spec.store;
-        
-        dispatch({
-            type: 'api.load', requestId, path: [...cursor, index], status: 'pending',
-            value: new EntityType().withStatus('pending'),
-        });
-        
-        return spec.methods.get(spec, index, ...args)
-            .then(response => {
-                const responseValue = response.body;
-                
-                if (typeof responseValue !== 'object' || !responseValue) {
-                    throw new TypeError(`Invalid response, expected object: ${JSON.stringify(responseValue)}`);
-                }
-                
-                const entity = makeEntity(EntityType, responseValue);
-                dispatch({
-                    type: 'api.load',
-                    requestId,
-                    path: [...cursor, index],
-                    status: 'ready',
-                    value: entity,
-                });
-                
-                // Links
-                
-                // TEMP: disabled
-                // const links = responseValue['_links'] || {};
-                // const embedded = responseValue['_embedded'] || {};
-                const links = {};
-                const embedded = {};
-                
-                for (let link in links) {
-                    if (spec.resources.hasOwnProperty(link)) {
-                        // Do we have an embedded response? If so, load it
-                        if (embedded.hasOwnProperty(link)) {
-                            const embeddedResponse = embedded[link];
-                            
-                            const context = { agent, path: [...path, index] };
-                            const subresource = spec.resources[link](index)(context);
-                            
-                            const value = subresource._valueFromResponse(embeddedResponse);
-                            
-                            const cursor = subresource._spec.store;
-                            dispatch({ type: 'api.load', requestId, path: [...cursor, index], status: 'ready', value });
-                        }
-                    }
-                }
-                
-                return entity;
-            })
-            .catch(reason => {
-                const cursor = spec.store;
-                dispatch({
-                    type: 'api.load', requestId, path: [...cursor, index], status: 'error', reason,
-                    value: new EntityType().withStatus('error'),
-                });
-                
-                if (mode === 'development') {
-                    console.error(reason);
-                }
-                return Promise.reject({ path: [...cursor, index], reason });
-            });
-    },
-    update: (EntityType, spec) => (index, entity, ...args) => dispatch => {
-        const requestId = uuid();
-        const cursor = spec.store;
-        return spec.methods.update(spec, index, entity, ...args)
-            .then(response => {
-                const responseValue = response.body;
-                
-                const entity = new EntityType(responseValue).withStatus('ready');
-                dispatch({ type: 'api.load', requestId, path: [...cursor, index], status: 'ready', value: entity });
-                
-                return entity;
-            })
-            .catch(reason => {
-                dispatch({
-                    type: 'api.load', requestId, path: [...cursor, index], status: 'error', reason,
-                    value: new EntityType().withStatus('error'),
-                });
-                
-                if (mode === 'development') {
-                    console.error(reason);
-                }
-                return Promise.reject({ path: [...cursor, index], reason });
-            });
-    },
-    delete: (EntityType, spec) => (index, ...args) => dispatch => {
-        const requestId = uuid();
-        const cursor = spec.store;
-        return spec.methods.delete(spec, index, ...args)
-            .then(response => {
-                const responseValue = response.body;
-                dispatch({ type: 'api.dispose', path: [...cursor, index] });
-                
-                return undefined; // No return value
-            })
-            .catch(reason => {
-                if (mode === 'development') {
-                    console.error(reason);
-                }
-                return Promise.reject({ path: [...cursor, index], reason });
-            });
-    },
-};
-
 
 const loaders = {
-    // Load a complete collection.
-    list: (Schema : SchemaI, { spec, path }) => (...options) => {
+    // Invalidate an item in the store and clear the corresponding data. Note: does *not* perform a
+    // delete operation in the API, only clears the information that's currently in loaded the store.
+    dispose: (Schema : SchemaI, spec) => (...options) => {
+        const emptyCollection = Schema.empty();
+        
         return StorablePromise.from(
             Loadable(null),
-            { location: path, operation: 'put' },
+            { location: spec.store, operation: 'put' },
+            Promise.resolve(emptyCollection)
+        );
+    },
+    
+    // Load a complete collection.
+    list: (Schema : SchemaI, spec) => (...options) => {
+        return StorablePromise.from(
+            Loadable(null),
+            { location: spec.store, operation: 'put' },
             spec.methods.list(spec, ...options)
                 .then(response => {
                     if (typeof Schema === 'function' && response instanceof Schema) {
@@ -258,7 +92,7 @@ const loaders = {
                     }
                     
                     // Parse the response
-                    const instanceEncoded = spec.parse('list', response);
+                    const instanceEncoded = spec.parse(response.data);
                     
                     // Parse the encoded instance as an instance of the schema
                     const collectionResult = Schema.decode(instanceEncoded);
@@ -271,25 +105,30 @@ const loaders = {
     // Load a partial collection by means of a collection query (ordering, filtering, etc.). Should result
     // in a subset of the collection's entries being loaded in the store. In addition, any query-specific
     // information is returned  to the caller (like ordering, query statistics (count), etc.).
-    query: (Schema : SchemaI, { spec, path }) => (...options) => {
+    query: (Schema : SchemaI, spec) => (...options) => {
+        const decode = response => {
+            if (typeof Schema === 'function' && response instanceof Schema) {
+                return response;
+            }
+            
+            // Parse the response
+            const instanceEncoded = spec.parse(response.data);
+            
+            // Parse the encoded instance as an instance of the schema
+            const collectionResult = Schema.decode(instanceEncoded);
+            
+            return collectionResult;
+        };
+        
         return StorablePromise.from(
             Loadable(null),
-            { location: path, operation: 'merge' },
-            spec.methods.query(spec, ...options)
-                .then(response => {
-                    if (typeof Schema === 'function' && response instanceof Schema) {
-                        return response;
-                    }
-                    
-                    // Parse the response
-                    const instanceEncoded = spec.parse('query', response);
-                    
-                    // Parse the encoded instance as an instance of the schema
-                    const collectionResult = Schema.decode(instanceEncoded);
-                    
-                    return collectionResult;
-                })
+            { location: spec.store, operation: 'merge' },
+            spec.methods.query(spec, decode, ...options)
         );
+    },
+    
+    create: (Schema : SchemaI, spec) => (...options) => {
+        //...
     },
 };
 
@@ -336,8 +175,14 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootS
     //getEntry._spec = spec;
     
     return Object.assign(getEntry, {
-        list: loaders.list(Schema, { spec, path }),
-        query: loaders.query(Schema, { spec, path }),
+        dispose: loaders.dispose(Schema, spec),
+        list: loaders.list(Schema, spec),
+        query: loaders.query(Schema, spec),
+        create: loaders.create(Schema, spec),
+        
+        // get: loaders.get(Schema, spec),
+        // put: loaders.put(Schema, spec),
+        // patch: loaders.patch(Schema, spec),
     });
 };
 

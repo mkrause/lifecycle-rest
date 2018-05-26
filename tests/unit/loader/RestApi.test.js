@@ -7,11 +7,13 @@ import sinon from 'sinon';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
-import createAgent from '../../../src/agent.js';
-import RestApi from '../../../src/loader/RestApi.js';
 
-import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
+import { status, Loadable } from '@mkrause/lifecycle-loader';
 import { Entity, Collection } from '@mkrause/lifecycle-immutable';
+
+import createAgent from '../../../src/agent.js';
+import StorablePromise from '../../../src/loader/StorablePromise.js';
+import RestApi from '../../../src/loader/RestApi.js';
 
 
 describe('RestApi', () => {
@@ -43,59 +45,116 @@ describe('RestApi', () => {
     });
     
     describe('collection resource', () => {
-        it('should support list()', async () => {
-            const agentMock = createAgent({
-                adapter: request => {
-                    const { method, baseUrl, url } = request;
+        const agentMock = createAgent({
+            adapter: request => {
+                const { method, baseUrl, url, params } = request;
+                
+                if (url === '/users') {
+                    const users = [
+                        { user_id: 'user42', name: 'John' },
+                        { user_id: 'user43', name: 'Alice' },
+                    ];
                     
-                    if (url === '/users') {
-                        // Simulate an async request
-                        return new Promise(resolve => {
-                            setTimeout(() => {
-                                resolve({
-                                    data: [
-                                        { user_id: 'user42', name: 'John' },
-                                        { user_id: 'user43', name: 'Alice' },
-                                    ],
-                                });
-                            }, 0);
-                        });
-                    } else {
-                        throw new Error($msg`Unknown route ${url}`);
+                    let data = users;
+                    
+                    if (typeof params === 'object' && params && params.filters) {
+                        if (params.filters.name) {
+                            data = users.filter(user => user.name === params.filters.name);
+                        }
                     }
-                },
-            });
-            
-            class UsersCollection {
-                static decode(instanceEncoded) {
-                    return instanceEncoded.reduce(
-                        (acc, item) => {
-                            return { ...acc, [item.user_id]: item };
-                        },
-                        {}
-                    );
+                    
+                    // Simulate an async request
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            resolve({ data });
+                        }, 0);
+                    });
+                } else {
+                    throw new Error($msg`Unknown route ${url}`);
                 }
+            },
+        });
+        
+        class UsersCollection {
+            static empty() {
+                return {};
             }
             
-            const api = RestApi(agentMock, {
-                store: ['app'],
-                resources: {
-                    users: RestApi.Collection(UsersCollection, {
-                        methods: {},
-                    }),
+            static decode(instanceEncoded) {
+                return instanceEncoded.reduce(
+                    (acc, item) => {
+                        return { ...acc, [item.user_id]: item };
+                    },
+                    {}
+                );
+            }
+        }
+        
+        const api = RestApi(agentMock, {
+            store: ['app'],
+            resources: {
+                users: RestApi.Collection(UsersCollection, {
+                    methods: {
+                        query: async (spec, decode, query) => {
+                            const items = decode(await agentMock.get(spec.uri, { params: query }));
+                            
+                            const queryResult = {
+                                items,
+                            };
+                            
+                            return queryResult;
+                        },
+                    },
+                }),
+            },
+        });
+        
+        it('should support dispose()', async () => {
+            const disposePromise = api.users.dispose();
+            
+            expect(disposePromise).to.be.an.instanceOf(StorablePromise);
+            expect(disposePromise.spec.location).to.deep.equal(['app', 'users']);
+            expect(disposePromise.spec.operation).to.equal('put'); // Complete (non-partial) store update
+            
+            const users = await disposePromise;
+            
+            expect(users).to.deep.equal({});
+        });
+        
+        it('should support list()', async () => {
+            const listPromise = api.users.list();
+            
+            expect(listPromise).to.be.an.instanceOf(StorablePromise);
+            expect(listPromise.spec.location).to.deep.equal(['app', 'users']);
+            expect(listPromise.spec.operation).to.equal('put'); // Complete (non-partial) store update
+            
+            const users = await listPromise;
+            
+            expect(users).to.deep.equal({
+                user42: { user_id: 'user42', name: 'John' },
+                user43: { user_id: 'user43', name: 'Alice' },
+            });
+        });
+        
+        it('should support query()', async () => {
+            const query = {
+                filters: {
+                    name: 'Alice',
+                },
+            };
+            const queryPromise = api.users.query(query);
+            
+            expect(queryPromise).to.be.an.instanceOf(StorablePromise);
+            expect(queryPromise.spec.location).to.deep.equal(['app', 'users']);
+            expect(queryPromise.spec.operation).to.equal('merge'); // Partial store update
+            
+            const usersResult = await queryPromise;
+            
+            expect(usersResult).to.deep.equal({
+                items: {
+                    user43: { user_id: 'user43', name: 'Alice' },
                 },
             });
-            
-            // const users = await api.users.list();
-            return api.users.list()
-                .subscribe(item => {
-                    console.log('x', item);
-                });
-            
-            // expect(users).to.deep.equal({
-            //     user42: { user_id: 'user42', name: 'John' },
-            //     user43: { user_id: 'user43', name: 'Alice' },
-            // });
         });
     });
     
