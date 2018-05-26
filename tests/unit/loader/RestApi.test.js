@@ -87,7 +87,7 @@ describe('RestApi', () => {
             });
             
             // const users = await api.users.list();
-            api.users.list()
+            return api.users.list()
                 .subscribe(item => {
                     console.log('x', item);
                 });

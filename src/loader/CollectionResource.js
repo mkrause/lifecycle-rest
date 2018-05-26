@@ -1,3 +1,4 @@
+// @flow
 
 import env from '../util/env.js';
 import merge from '../util/merge.js';
@@ -13,14 +14,19 @@ import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 import StorablePromise from './StorablePromise.js';
 
 
+type SchemaI = {
+    decode : (instanceEncoded) => {};
+};
+
 const collectionDefaults = agent => ({
     store: [],
     uri: '',
-    parse: response => {
-        if (Array.isArray(response)) {
-            return response;
+    parse: (method, response) => {
+        const body = response.data;
+        if (Array.isArray(body)) {
+            return body;
         } else {
-            throw new TypeError($msg`Unknown collection response format: ${response}`);
+            throw new TypeError($msg`Unknown collection response format: ${body}`);
         }
     },
     methods: {
@@ -240,10 +246,11 @@ const reduxActions = {
 
 
 const loaders = {
-    list: (Schema, { spec, path }) => (collectionCurrent = Loadable(null), ...options) => {
+    // Load a complete collection.
+    list: (Schema : SchemaI, { spec, path }) => (...options) => {
         return StorablePromise.from(
-            collectionCurrent,
-            { spec, path },
+            Loadable(null),
+            { location: path, operation: 'put' },
             spec.methods.list(spec, ...options)
                 .then(response => {
                     if (typeof Schema === 'function' && response instanceof Schema) {
@@ -251,18 +258,42 @@ const loaders = {
                     }
                     
                     // Parse the response
-                    const instanceEncoded = spec.parse(response.data);
+                    const instanceEncoded = spec.parse('list', response);
                     
                     // Parse the encoded instance as an instance of the schema
-                    const collectionUpdated = Schema.decode(instanceEncoded);
+                    const collectionResult = Schema.decode(instanceEncoded);
                     
-                    return collectionUpdated;
+                    return collectionResult;
+                })
+        );
+    },
+    
+    // Load a partial collection by means of a collection query (ordering, filtering, etc.). Should result
+    // in a subset of the collection's entries being loaded in the store. In addition, any query-specific
+    // information is returned  to the caller (like ordering, query statistics (count), etc.).
+    query: (Schema : SchemaI, { spec, path }) => (...options) => {
+        return StorablePromise.from(
+            Loadable(null),
+            { location: path, operation: 'merge' },
+            spec.methods.query(spec, ...options)
+                .then(response => {
+                    if (typeof Schema === 'function' && response instanceof Schema) {
+                        return response;
+                    }
+                    
+                    // Parse the response
+                    const instanceEncoded = spec.parse('query', response);
+                    
+                    // Parse the encoded instance as an instance of the schema
+                    const collectionResult = Schema.decode(instanceEncoded);
+                    
+                    return collectionResult;
                 })
         );
     },
 };
 
-const CollectionResource = (Schema, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
+const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
     // Last path item (i.e. the key of the current resource)
     const label = parentSpec === null ? null : path[path.length - 1];
     
@@ -273,14 +304,14 @@ const CollectionResource = (Schema, collectionSpec) => ({ agent, rootSpec, paren
     const spec = merge(collectionDefaultsWithContext, collectionSpec);
     
     // Collection methods
-    const methods = {
-        dispose: reduxActions.dispose(Schema, spec),
-        list: reduxActions.list(Schema, spec),
-        create: reduxActions.create(Schema, spec),
-        get: reduxActions.get(Schema, spec),
-        update: reduxActions.update(Schema, spec),
-        delete: reduxActions.delete(Schema, spec),
-    };
+    // const methods = {
+    //     dispose: reduxActions.dispose(Schema, spec),
+    //     list: reduxActions.list(Schema, spec),
+    //     create: reduxActions.create(Schema, spec),
+    //     get: reduxActions.get(Schema, spec),
+    //     update: reduxActions.update(Schema, spec),
+    //     delete: reduxActions.delete(Schema, spec),
+    // };
     
     // Take an index into this collection, and return a new API resource representing that entry resource
     const getEntry = index => {
@@ -300,17 +331,14 @@ const CollectionResource = (Schema, collectionSpec) => ({ agent, rootSpec, paren
     
     // Object.assign(getEntry, methods);
     
-    Object.assign(getEntry, {
-        list: loaders.list(Schema, { spec, path }),
-    });
-    
     // Common interface to get a value from a response for this API resource type
     //getEntry._valueFromResponse = collectionFromResponse(Schema);
     //getEntry._spec = spec;
     
-    //console.log('col', spec, getEntry);
-    
-    return getEntry;
+    return Object.assign(getEntry, {
+        list: loaders.list(Schema, { spec, path }),
+        query: loaders.query(Schema, { spec, path }),
+    });
 };
 
 export default CollectionResource;
