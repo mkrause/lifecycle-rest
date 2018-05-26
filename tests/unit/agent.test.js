@@ -9,7 +9,7 @@ import $uri from 'uri-tag';
 import http from 'http';
 import { PassThrough } from 'stream';
 
-import createAgent from '../src/agent.js';
+import createAgent from '../../src/agent.js';
 
 
 describe('agent', () => {

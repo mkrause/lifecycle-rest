@@ -7,8 +7,8 @@ import sinon from 'sinon';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
-import createAgent from '../../src/agent.js';
-import RestApi from '../../src/loader/RestApi.js';
+import createAgent from '../../../src/agent.js';
+import RestApi from '../../../src/loader/RestApi.js';
 
 import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
 import { Entity, Collection } from '@mkrause/lifecycle-immutable';

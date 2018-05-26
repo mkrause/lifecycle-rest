@@ -7,10 +7,10 @@ import $uri from 'uri-tag';
 
 import ItemResource from './ItemResource.js';
 
-import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
+import { status, Loadable } from '@mkrause/lifecycle-loader';
 import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 
-import * as SchemaUtil from './util/SchemaUtil.js';
+import StorablePromise from './StorablePromise.js';
 
 
 const collectionDefaults = agent => ({
@@ -238,10 +238,12 @@ const reduxActions = {
     },
 };
 
+
 const loaders = {
-    list: (Schema, spec) => (collectionCurrent = Loadable(null), ...options) => {
-        return LoadablePromise.from(
+    list: (Schema, { spec, path }) => (collectionCurrent = Loadable(null), ...options) => {
+        return StorablePromise.from(
             collectionCurrent,
+            { spec, path },
             spec.methods.list(spec, ...options)
                 .then(response => {
                     if (typeof Schema === 'function' && response instanceof Schema) {
@@ -299,7 +301,7 @@ const CollectionResource = (Schema, collectionSpec) => ({ agent, rootSpec, paren
     // Object.assign(getEntry, methods);
     
     Object.assign(getEntry, {
-        list: loaders.list(Schema, spec),
+        list: loaders.list(Schema, { spec, path }),
     });
     
     // Common interface to get a value from a response for this API resource type

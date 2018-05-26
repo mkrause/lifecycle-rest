@@ -1,19 +1,11 @@
 
-// Function to create a new API agent. An API agent is a basic HTTP interface to communicate
-// with an API endpoint.
-// Example:
-//     Api.createAgent({
-//         uri: "http://example.com/api",
-//     });
+export { default as createAgent } from './agent.js';
 
-/*
-FIXME
+export { default as RestApi } from './RestApi.js';
 
-export { default as createAgent } from './Agent.js';
+import reduxMiddleware from './redux/middleware.js';
+import reduxReduce from './redux/reducer.js';
+export const redux = { middleware: reduxMiddleware, reduce: reduxReduce };
 
-export { restApi, collection } from './RestApi.js';
-
-export { update } from './redux.js';
-
-export { withStatus, loader } from './component_util.js';
-*/
+// Re-export from lifecycle-loader, for convenience
+export { status } from 'lifecycle-loader';
