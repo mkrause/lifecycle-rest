@@ -13,8 +13,7 @@ import { Entity, Collection } from '@mkrause/lifecycle-immutable';
 
 import createAgent from '../../../src/agent.js';
 import StorablePromise from '../../../src/loader/StorablePromise.js';
-import ItemResource from '../../../src/loader/ItemResource.js';
-import RestApi from '../../../src/loader/RestApi.js';
+import ItemResource, { SimpleResource } from '../../../src/loader/ItemResource.js';
 
 
 describe('RestApi', () => {
@@ -62,31 +61,39 @@ describe('RestApi', () => {
             },
         });
         
+        const context = {
+            agent: agentMock,
+            config: {},
+            path: [],
+            store: [],
+            uri: '',
+        };
+        
         it('should have sensible defaults', () => {
-            const api = RestApi(agentMock, ItemResource());
+            const api = SimpleResource()(context);
             
             expect(api).to.have.nested.property('_spec.store').to.deep.equal([]);
             expect(api).to.have.nested.property('_spec.uri').to.deep.equal('');
         });
         
         it('should allow customization', () => {
-            const api = RestApi(agentMock, ItemResource({
+            const api = SimpleResource({
                 store: ['foo', 'bar'],
                 uri: 'x/y',
-            }));
+            })(context);
             
             expect(api).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar']);
             expect(api).to.have.nested.property('_spec.uri').to.equal('x/y');
         });
         
         it('should allow definition of subresources', () => {
-            const api = RestApi(agentMock, ItemResource({
+            const api = SimpleResource({
                 store: ['foo', 'bar'],
                 uri: 'x/y',
                 resources: {
-                    baz: ItemResource(),
+                    baz: SimpleResource(),
                 },
-            }));
+            })(context);
             
             expect(api).to.have.property('baz');
             
@@ -95,16 +102,16 @@ describe('RestApi', () => {
         });
         
         it('should use relative behavior by default for subresources', () => {
-            const api = RestApi(agentMock, ItemResource({
+            const api = SimpleResource({
                 store: ['foo', 'bar'],
                 uri: 'x/y',
                 resources: {
-                    baz: ItemResource({
+                    baz: SimpleResource({
                         store: ['baz'],
                         uri: 'z',
                     }),
                 },
-            }));
+            })(context);
             
             expect(api).to.have.property('baz');
             
@@ -113,16 +120,16 @@ describe('RestApi', () => {
         });
         
         it('should support the method fetch()', async () => {
-            const api = RestApi(agentMock, ItemResource({
+            const api = SimpleResource({
                 store: ['app'],
                 uri: '/api',
                 resources: {
-                    user: ItemResource({
+                    user: SimpleResource({
                         store: ['user'],
                         uri: 'user',
                     }),
                 },
-            }));
+            })(context);
             
             const user = await api.user.fetch();
             

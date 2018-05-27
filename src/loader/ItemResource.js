@@ -15,7 +15,7 @@ const itemDefaults = {
 
 const parse = response => response.data;
 
-const ItemResource = (itemSpec = {}) => context => {
+const ItemResource = (Schema, itemSpec = {}) => context => {
     const { agent, config } = context;
     
     const isRoot = context.path.length === 0;
@@ -59,5 +59,12 @@ const ItemResource = (itemSpec = {}) => context => {
     
     return resource;
 };
+
+class SimpleSchema {
+    static instantiate() { return {}; }
+    static decode(instanceEncoded) { return instanceEncoded; }
+    static decode(instance) { return instance; }
+}
+export const SimpleResource = spec => ItemResource(SimpleSchema, spec);
 
 export default ItemResource;
