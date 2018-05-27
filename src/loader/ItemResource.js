@@ -1,3 +1,4 @@
+// @flow
 
 import env from '../util/env.js';
 import merge from '../util/merge.js';
@@ -13,7 +14,15 @@ const itemDefaults = {
     resources: {},
 };
 
-const parse = response => response.data;
+const parse = response => {
+    if (response.status === 204) {
+        return null;
+    }
+    
+    return response.data;
+};
+
+const format = item => item;
 
 const ItemResource = (Schema, itemSpec = {}) => context => {
     const { agent, config } = context;
@@ -34,8 +43,12 @@ const ItemResource = (Schema, itemSpec = {}) => context => {
     spec.uri = concatUri([context.uri, spec.uri]);
     
     const methods = {
-        async fetch() {
-            return parse(await agent.get(spec.uri));
+        async get(params = {}) {
+            return Schema.decode(parse(await agent.get(spec.uri, { params })));
+        },
+        
+        async put(item, params = {}) {
+            return Schema.decode(parse(await agent.put(spec.uri, format(Schema.encode(item)), { params })));
         },
     };
     
@@ -63,7 +76,7 @@ const ItemResource = (Schema, itemSpec = {}) => context => {
 class SimpleSchema {
     static instantiate() { return {}; }
     static decode(instanceEncoded) { return instanceEncoded; }
-    static decode(instance) { return instance; }
+    static encode(instance) { return instance; }
 }
 export const SimpleResource = spec => ItemResource(SimpleSchema, spec);
 

@@ -3,7 +3,7 @@
 import env from '../util/env.js';
 import merge from '../util/merge.js';
 
-import ItemResource from './ItemResource.js';
+import ItemResource, { SimpleResource } from './ItemResource.js';
 import CollectionResource from './CollectionResource.js';
 
 
@@ -33,7 +33,9 @@ export type Context = {
 };
 export type Resource = Context => mixed;
 
-const RestApi = (agent : Agent, resource : Resource) => {
+const RestApi = (agent : Agent, _resource : Resource) => {
+    const resource = typeof _resource !== 'function' ? SimpleResource(_resource) : _resource;
+    
     const config = {}; // In the future we may want to support additional API configuration
     
     // Current context while traversing through the resource hierarchy

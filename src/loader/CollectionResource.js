@@ -6,7 +6,7 @@ import uuid from 'uuid';
 import $msg from 'message-tag';
 import $uri from 'uri-tag';
 
-import ItemResource from './ItemResource.js';
+import ItemResource, { SimpleResource } from './ItemResource.js';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 import type { LoadableT } from '@mkrause/lifecycle-loader';
@@ -14,6 +14,8 @@ import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 
 import StorablePromise from './StorablePromise.js';
 
+
+const concatUri = parts => parts.filter(part => part !== '').join('/');
 
 // FIXME: SchemaI should be a constructor function with static properties and instance properties.
 // Need to figure out how to express this in flow
@@ -168,15 +170,24 @@ const loaders = {
     },
 };
 
-const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootSpec, parentSpec, path }) => {
-    // Last path item (i.e. the key of the current resource)
-    const label = parentSpec === null ? null : path[path.length - 1];
+const CollectionResource = (Schema : SchemaI, collectionSpec) => context => {
+    const { agent, config } = context;
     
+    const isRoot = context.path.length === 0;
+    const label = isRoot ? null : context.path[context.path.length - 1];
+    
+    
+    // Parse the collection specification
     const collectionDefaultsWithContext = merge(collectionDefaults(agent), {
-        store: parentSpec === null ? [] : [...parentSpec.store, label],
-        uri: parentSpec === null ? '' : `${parentSpec.uri}/${label}`,
+        store: isRoot ? [] : [label],
+        uri: isRoot ? '' : label,
     });
     const spec = merge(collectionDefaultsWithContext, collectionSpec);
+    
+    // Make relative
+    // TODO: allow the spec to override this and use absolute references instead
+    spec.store = [...context.store, ...spec.store];
+    spec.uri = concatUri([context.uri, spec.uri]);
     
     const methods = {
         dispose: loaders.dispose(Schema, spec),
@@ -192,17 +203,19 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootS
     const customMethods = spec.methods;
     
     // Take an index into this collection, and return a new API resource representing that entry resource
+    const EntrySchema = Schema.getEntrySchema; // TODO
     const getEntry = index => {
-        const entryPath = [...path, index];
+        const entryPath = [...context.path, index];
         
         const itemContext = {
-            agent,
-            rootSpec,
-            parentSpec: spec,
-            path: [...path, index],
+            agent: context.agent,
+            config: context.config,
+            path: [...context.path, index],
+            store: spec.store,
+            uri: spec.uri,
         };
         
-        return ItemResource({
+        return ItemResource(EntrySchema, {
             resources: spec.resources,
         });
     };

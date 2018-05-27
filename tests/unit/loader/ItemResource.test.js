@@ -18,45 +18,40 @@ import ItemResource, { SimpleResource } from '../../../src/loader/ItemResource.j
 
 describe('RestApi', () => {
     describe('ItemResource', () => {
-        class Item {
-            static empty() {
-                return {};
-            }
-            
-            static decode(instanceEncoded) {
-                return instanceEncoded.reduce(
-                    (acc, item) => {
-                        return { ...acc, [item.user_id]: item };
-                    },
-                    {}
-                );
-            }
-        }
+        // Simulate an async response
+        const makeResponse = response => new Promise(resolve => {
+            setTimeout(() => { resolve(response); }, 0);
+        });
         
         const agentMock = createAgent({
-            adapter: request => {
+            adapter: async request => {
                 const { method, baseUrl, url, params } = request;
                 
-                if (url === '/api') {
+                if (method === 'get' && url === '/api') {
                     const item = {
                         version: 42,
                     };
                     
-                    // Simulate an async request
-                    return new Promise(resolve => {
-                        setTimeout(() => { resolve({ data: item }); }, 0);
-                    });
-                } else if (url === '/api/user') {
+                    return await makeResponse({ data: item });
+                } else if (method === 'get' && url === '/api/foo') {
+                    return await makeResponse({ data: { x: 42 } });
+                } else if (method === 'get' && url === '/api/user') {
                     const user = {
                         name: 'Alice',
                     };
                     
-                    // Simulate an async request
-                    return new Promise(resolve => {
-                        setTimeout(() => { resolve({ data: user }); }, 0);
-                    });
+                    return await makeResponse({ data: user });
+                } else if (method === 'put' && url === '/api/user') {
+                    const userRequest = JSON.parse(request.data);
+                    
+                    const user = {
+                        ...userRequest,
+                        user_id: 42, // Simulate create response with newly added ID
+                    };
+                    
+                    return await makeResponse({ data: user });
                 } else {
-                    throw new Error($msg`Unknown route ${url}`);
+                    throw new Error($msg`Unknown route ${method} ${url}`);
                 }
             },
         });
@@ -119,21 +114,72 @@ describe('RestApi', () => {
             expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/z');
         });
         
-        it('should support the method fetch()', async () => {
+        it('should support methods', async () => {
             const api = SimpleResource({
                 store: ['app'],
                 uri: '/api',
                 resources: {
-                    user: SimpleResource({
+                    foo: SimpleResource({
+                        store: ['foo'],
+                        uri: 'foo',
+                    }),
+                },
+            })(context);
+            
+            const result = await api.foo.get();
+            
+            expect(result).to.deep.equal({ x: 42 });
+        });
+        
+        
+        class User {
+            static instantiate() {
+                return {
+                    name: null,
+                };
+            }
+            
+            static decode(instanceEncoded) {
+                return instanceEncoded;
+            }
+            
+            static encode(instance) {
+                return instance;
+            }
+        }
+        
+        it('should support the method get()', async () => {
+            const api = SimpleResource({
+                store: ['app'],
+                uri: '/api',
+                resources: {
+                    user: ItemResource(User, {
                         store: ['user'],
                         uri: 'user',
                     }),
                 },
             })(context);
             
-            const user = await api.user.fetch();
+            const user = await api.user.get();
             
-            expect(user).to.have.property('name', 'Alice');
+            expect(user).to.deep.equal({ name: 'Alice' });
+        });
+        
+        it('should support the method put()', async () => {
+            const api = SimpleResource({
+                store: ['app'],
+                uri: '/api',
+                resources: {
+                    user: ItemResource(User, {
+                        store: ['user'],
+                        uri: 'user',
+                    }),
+                },
+            })(context);
+            
+            const user = await api.user.put({ name: 'Alice' });
+            
+            expect(user).to.deep.equal({ user_id: 42, name: 'Alice' });
         });
     });
 });
