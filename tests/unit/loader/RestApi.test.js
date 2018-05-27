@@ -17,31 +17,61 @@ import RestApi from '../../../src/loader/RestApi.js';
 
 
 describe('RestApi', () => {
-    /*
-    class User extends Entity {
-        static Collection = class UserCollection extends Collection {
-            constructor(entries, meta) {
-                super(entries, meta, User);
-            }
-        };
-        
-        static key = {
-            user_id: String,
-        };
-        
-        static schema = {
-            user_id: String,
-            name: String,
-        };
-        
-        constructor(instance, meta) {
-            super(instance, meta, User.schema);
-        }
-    }
-    */
-    
     describe('item resource', () => {
-        // TODO
+        const agentMock = createAgent({
+            adapter: request => {
+                const { method, baseUrl, url, params } = request;
+                
+                if (url === '/') {
+                    const users = [
+                        { user_id: 'user42', name: 'John' },
+                        { user_id: 'user43', name: 'Alice' },
+                    ];
+                    
+                    let data = users;
+                    
+                    if (typeof params === 'object' && params && params.filters) {
+                        if (params.filters.name) {
+                            data = users.filter(user => user.name === params.filters.name);
+                        }
+                    }
+                    
+                    // Simulate an async request
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            resolve({ data });
+                        }, 0);
+                    });
+                } else {
+                    throw new Error($msg`Unknown route ${url}`);
+                }
+            },
+        });
+        
+        class Item {
+            static empty() {
+                return {};
+            }
+            
+            static decode(instanceEncoded) {
+                return instanceEncoded.reduce(
+                    (acc, item) => {
+                        return { ...acc, [item.user_id]: item };
+                    },
+                    {}
+                );
+            }
+        }
+        
+        const api = RestApi(agentMock, {
+            store: ['app'],
+            resources: {
+            },
+        });
+        
+        it('should ...', () => {
+            //...
+        });
     });
     
     describe('collection resource', () => {

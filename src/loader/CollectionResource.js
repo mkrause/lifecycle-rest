@@ -23,6 +23,9 @@ type SchemaI = {
     
     decode : (instanceEncoded) => {};
 };
+type CollectionSchema = SchemaI & { // FIXME
+    getEntrySchema : () => {},
+};
 
 const collectionDefaults = agent => ({
     store: [],
@@ -49,9 +52,10 @@ const collectionDefaults = agent => ({
         list: (spec, { hint = null } = {}) => {
             return agent.get(spec.uri);
         },
-        // create: (spec, entity) => {
-        //     return agent.post(`${spec.uri}`).send(entity.toJSON());
-        // },
+        create: (spec, item) => {
+            // FIXME: `toJSON()` should be replaced with `Schema.encode()`
+            return agent.post(spec.uri, item.toJSON());
+        },
         // get: (spec, index) => {
         //     return agent.get(`${spec.uri}/${index}`);
         // },
@@ -120,6 +124,12 @@ const loaders = {
             return collectionResult;
         };
         
+        const updateStore = result => {
+            if (typeof result === 'object' && result && result.items && status in result.items) {
+                //...
+            }
+        };
+        
         return StorablePromise.from(
             Loadable(null),
             { location: spec.store, operation: 'merge' },
@@ -127,8 +137,34 @@ const loaders = {
         );
     },
     
-    create: (Schema : SchemaI, spec) => (...options) => {
-        //...
+    // Add a new entry to the collection. This is essentially an operation on a specific entry, not the
+    // collection. However, in this case we do not yet have a key. You can think of `create()` as a
+    // combination of a "generate key" operation, and a write to that key.
+    create: (Schema : SchemaI, spec) => (item, ...options) => {
+        const EntrySchema = Schema.getEntrySchema();
+        
+        return StorablePromise.from(
+            Loadable(null),
+            { location: spec.store, operation: 'put' },
+            spec.methods.create(spec, item, ...options)
+                .then(response => {
+                    // Note: we need at minimum the key of the item that has been created. Usually the
+                    // result of a create operation will the item as it would be returned by a get on
+                    // that resource, so we can immediately load that into the store.
+                    
+                    if (typeof EntrySchema === 'function' && response instanceof EntrySchema) {
+                        return response;
+                    }
+                    
+                    // Parse the response
+                    const instanceEncoded = spec.parse(response.data);
+                    
+                    // Parse the encoded instance as an instance of the schema
+                    const entryResult = EntrySchema.decode(instanceEncoded);
+                    
+                    return entryResult;
+                })
+        );
     },
 };
 
@@ -142,15 +178,18 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootS
     });
     const spec = merge(collectionDefaultsWithContext, collectionSpec);
     
-    // Collection methods
-    // const methods = {
-    //     dispose: reduxActions.dispose(Schema, spec),
-    //     list: reduxActions.list(Schema, spec),
-    //     create: reduxActions.create(Schema, spec),
-    //     get: reduxActions.get(Schema, spec),
-    //     update: reduxActions.update(Schema, spec),
-    //     delete: reduxActions.delete(Schema, spec),
-    // };
+    const methods = {
+        dispose: loaders.dispose(Schema, spec),
+        list: loaders.list(Schema, spec),
+        query: loaders.query(Schema, spec),
+        create: loaders.create(Schema, spec),
+        
+        // get: loaders.get(Schema, spec),
+        // put: loaders.put(Schema, spec),
+        // patch: loaders.patch(Schema, spec),
+    };
+    
+    const customMethods = spec.methods;
     
     // Take an index into this collection, and return a new API resource representing that entry resource
     const getEntry = index => {
@@ -168,22 +207,12 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootS
         });
     };
     
-    // Object.assign(getEntry, methods);
+    // Expose some information about this resource
+    const info = {
+        _spec: spec,
+    };
     
-    // Common interface to get a value from a response for this API resource type
-    //getEntry._valueFromResponse = collectionFromResponse(Schema);
-    //getEntry._spec = spec;
-    
-    return Object.assign(getEntry, {
-        dispose: loaders.dispose(Schema, spec),
-        list: loaders.list(Schema, spec),
-        query: loaders.query(Schema, spec),
-        create: loaders.create(Schema, spec),
-        
-        // get: loaders.get(Schema, spec),
-        // put: loaders.put(Schema, spec),
-        // patch: loaders.patch(Schema, spec),
-    });
+    return Object.assign(getEntry, customMethods, methods, info);
 };
 
 export default CollectionResource;

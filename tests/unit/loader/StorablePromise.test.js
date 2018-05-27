@@ -4,7 +4,7 @@ declare var it : Function;
 
 import { expect } from 'chai';
 
-import { status, Loadable } from '@mkrause/lifecycle-loader';
+import { status, Loadable, LoadError } from '@mkrause/lifecycle-loader';
 
 import StorablePromise from '../../../src/loader/StorablePromise.js';
 
@@ -59,9 +59,12 @@ describe('StorablePromise', () => {
                         throw new Error('Expected promise to be rejected');
                     },
                     reason => {
-                        expect(status in reason).to.be.true;
-                        expect(reason[status]).to.have.property('error').to.be.an.instanceOf(Error);
-                        expect(reason[status]).to.have.property('error').to.have.property('message', 'Failed');
+                        expect(reason).to.be.an.instanceOf(LoadError);
+                        
+                        const item = reason.item;
+                        expect(status in item).to.be.true;
+                        expect(item[status]).to.have.property('error').to.be.an.instanceOf(Error);
+                        expect(item[status]).to.have.property('error').to.have.property('message', 'Failed');
                     },
                 );
         });
@@ -95,9 +98,12 @@ describe('StorablePromise', () => {
                 
                 throw new Error('Expected promise to throw');
             } catch (reason) {
-                expect(status in reason).to.be.true;
-                expect(reason[status]).to.have.property('error').to.be.an.instanceOf(Error);
-                expect(reason[status]).to.have.property('error').to.have.property('message', 'Failed');
+                expect(reason).to.be.an.instanceOf(LoadError);
+                
+                const item = reason.item;
+                expect(status in item).to.be.true;
+                expect(item[status]).to.have.property('error').to.be.an.instanceOf(Error);
+                expect(item[status]).to.have.property('error').to.have.property('message', 'Failed');
             }
         });
     });
