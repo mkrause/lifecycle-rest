@@ -109,33 +109,33 @@ const loaders = {
     // Load a partial collection by means of a collection query (ordering, filtering, etc.). Should result
     // in a subset of the collection's entries being loaded in the store. In addition, any query-specific
     // information is returned  to the caller (like ordering, query statistics (count), etc.).
-    query: (Schema : SchemaI, spec) => (...options) => {
-        const decode = response => {
-            if (typeof Schema === 'function' && response instanceof Schema) {
-                return response;
-            }
-            
-            // Parse the response
-            const instanceEncoded = spec.parse(response.data);
-            
-            // Parse the encoded instance as an instance of the schema
-            const collectionResult = Schema.decode(instanceEncoded);
-            
-            return collectionResult;
-        };
-        
-        const updateStore = result => {
-            if (typeof result === 'object' && result && result.items && status in result.items) {
-                //...
-            }
-        };
-        
-        return StorablePromise.from(
-            Loadable(null),
-            { location: spec.store, operation: 'merge' },
-            spec.methods.query(spec, decode, ...options)
-        );
-    },
+    // query: (Schema : SchemaI, spec) => (...options) => {
+    //     const decode = response => {
+    //         if (typeof Schema === 'function' && response instanceof Schema) {
+    //             return response;
+    //         }
+    //         
+    //         // Parse the response
+    //         const instanceEncoded = spec.parse(response.data);
+    //         
+    //         // Parse the encoded instance as an instance of the schema
+    //         const collectionResult = Schema.decode(instanceEncoded);
+    //         
+    //         return collectionResult;
+    //     };
+    //     
+    //     const updateStore = result => {
+    //         if (typeof result === 'object' && result && result.items && status in result.items) {
+    //             //...
+    //         }
+    //     };
+    //     
+    //     return StorablePromise.from(
+    //         Loadable(null),
+    //         { location: spec.store, operation: updateStore },
+    //         spec.methods.query(spec, decode, ...options)
+    //     );
+    // },
     
     // Add a new entry to the collection. This is essentially an operation on a specific entry, not the
     // collection. However, in this case we do not yet have a key. You can think of `create()` as a
@@ -181,7 +181,7 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => ({ agent, rootS
     const methods = {
         dispose: loaders.dispose(Schema, spec),
         list: loaders.list(Schema, spec),
-        query: loaders.query(Schema, spec),
+        //query: loaders.query(Schema, spec),
         create: loaders.create(Schema, spec),
         
         // get: loaders.get(Schema, spec),

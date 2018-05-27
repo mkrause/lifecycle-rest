@@ -74,6 +74,7 @@ describe('RestApi', () => {
         });
     });
     
+    /*
     describe('collection resource', () => {
         const agentMock = createAgent({
             adapter: request => {
@@ -187,6 +188,7 @@ describe('RestApi', () => {
             });
         });
     });
+    */
     
     /*
     describe('collection resource', () => {

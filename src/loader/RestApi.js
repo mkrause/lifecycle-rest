@@ -24,27 +24,32 @@ interface Agent {
     delete : Function,
 };
 
-const apiSpecDefaults = {
-    uri: '', // Root path (without trailing slash, so just an empty string)
-    store: [],
-    resources: {},
+export type Context = {
+    agent : Agent,
+    config : Object,
+    path : Array<mixed>,
+    store : Array<mixed>,
+    uri : string,
 };
+export type Resource = Context => mixed;
 
-const RestApi = (agent : Agent, apiSpec : typeof apiSpecDefaults) => {
-    const spec = merge(apiSpecDefaults, apiSpec);
+const RestApi = (agent : Agent, resource : Resource) => {
+    const config = {}; // In the future we may want to support additional API configuration
     
-    // Current context while traversing through the spec hierarchy
+    // Current context while traversing through the resource hierarchy
     const context = {
         agent,
-        rootSpec: spec,
-        parentSpec: null,
-        path: [], // The current path in the API spec tree
+        config,
+        path: [], // The current path in the API resource tree
+        store: [],
+        uri: '', // Note: no trailing slash (so empty string in case of empty URI)
     };
     
     // Return the root item resource
-    return ItemResource(spec)(context);
+    return resource(context);
 };
 
+// Shorthands
 RestApi.Item = ItemResource;
 RestApi.Collection = CollectionResource;
 

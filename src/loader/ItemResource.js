@@ -5,33 +5,59 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 
 
+const concatUri = parts => parts.filter(part => part !== '').join('/');
+
 const itemDefaults = {
     store: [],
     uri: '',
     resources: {},
 };
 
-// TODO: support methods (get, put, patch, but *not* list-specific methods like post, delete)
+const parse = response => response.data;
 
-const ItemResource = itemSpec => ({ agent, rootSpec, parentSpec, path }) => {
-    // Last path item (i.e. the key of the current resource)
-    const label = parentSpec === null ? null : path[path.length - 1];
+const ItemResource = (itemSpec = {}) => context => {
+    const { agent, config } = context;
     
+    const isRoot = context.path.length === 0;
+    const label = isRoot ? null : context.path[context.path.length - 1];
+    
+    // Parse the item specification
     const itemDefaultsWithContext = merge(itemDefaults, {
-        store: parentSpec === null ? [] : [...parentSpec.store, label],
-        uri: parentSpec === null ? '' : `${parentSpec.uri}/${label}`,
+        store: isRoot ? [] : [label],
+        uri: isRoot ? '' : label,
     });
     const spec = merge(itemDefaultsWithContext, itemSpec);
     
-    return ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
+    // Make relative
+    // TODO: allow the spec to override this and use absolute references instead
+    spec.store = [...context.store, ...spec.store];
+    spec.uri = concatUri([context.uri, spec.uri]);
+    
+    const methods = {
+        async fetch() {
+            return parse(await agent.get(spec.uri));
+        },
+    };
+    
+    // Subresources
+    const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
         const resourceContext = {
-            agent,
-            rootSpec,
-            parentSpec: spec,
-            path: [...path, resourceKey],
+            agent: context.agent,
+            config: context.config,
+            path: [...context.path, resourceKey],
+            store: spec.store,
+            uri: spec.uri,
         };
         return resource(resourceContext);
     });
+    
+    const resource = {
+        ...methods,
+        ...resources,
+        _spec: spec, // Expose the spec
+    };
+    
+    return resource;
 };
 
 export default ItemResource;
