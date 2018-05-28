@@ -23,7 +23,8 @@ type InstanceI = LoadableT;
 type SchemaI = {
     empty : () => InstanceI,
     
-    decode : (instanceEncoded) => {};
+    decode : (instanceEncoded : mixed) => InstanceI;
+    encode : (instance : InstanceI) => mixed;
 };
 type CollectionSchema = SchemaI & { // FIXME
     getEntrySchema : () => {},
