@@ -19,7 +19,7 @@ const api = RestApi(agent, {
             
             entry: RestApi.Item(User),
             
-            // Custom your own methods
+            // Custom methods
             methods: {
                 search: (spec, query) => {
                     return agent.get(spec.uri, query);
