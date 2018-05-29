@@ -33,13 +33,13 @@ const api = RestApi(agent, {
 });
 
 // Call the API directly
-const users = await api.users.list();
+const users = await api.users.list(); // GET /api/users
 
 // Index into a collection to access an entry (configurable through the `entry` property)
-const john = await api.users('john').get();
+const john = await api.users('john').get(); // GET /api/users/john
 
 // Or, dispatch to a redux store in order to store the result
-dispatch(api.users.search({ name: 'Alice' }));
+dispatch(api.users.search({ name: 'Alice' })); // GET /api/users?name=Alice
 ```
 
 
