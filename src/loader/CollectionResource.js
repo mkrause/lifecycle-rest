@@ -5,30 +5,18 @@ import merge from '../util/merge.js';
 import uuid from 'uuid';
 import $msg from 'message-tag';
 import $uri from 'uri-tag';
-
-import ItemResource, { SimpleResource } from './ItemResource.js';
+import { concatUri } from '../util/uri.js';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 import type { LoadableT } from '@mkrause/lifecycle-loader';
 import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 
 import StorablePromise from './StorablePromise.js';
+import { SimpleItem } from './Resource.js';
+import type { ItemSchema } from './Resource.js';
+import ItemResource, { SimpleResource } from './ItemResource.js';
 
 
-const concatUri = parts => parts.filter(part => part !== '').join('/');
-
-// FIXME: SchemaI should be a constructor function with static properties and instance properties.
-// Need to figure out how to express this in flow
-type InstanceI = LoadableT;
-type SchemaI = {
-    empty : () => InstanceI,
-    
-    decode : (instanceEncoded : mixed) => InstanceI;
-    encode : (instance : InstanceI) => mixed;
-};
-type CollectionSchema = SchemaI & { // FIXME
-    getEntrySchema : () => {},
-};
 
 const collectionDefaults = agent => ({
     store: [],
@@ -56,8 +44,7 @@ const collectionDefaults = agent => ({
             return agent.get(spec.uri);
         },
         create: (spec, item) => {
-            // FIXME: `toJSON()` should be replaced with `Schema.encode()`
-            return agent.post(spec.uri, item.toJSON());
+            return agent.post(spec.uri, spec.entry.schema.encode(item));
         },
         // get: (spec, index) => {
         //     return agent.get(`${spec.uri}/${index}`);
@@ -70,6 +57,7 @@ const collectionDefaults = agent => ({
         //     return agent.delete(`${spec.uri}/${index}`);
         // },
     },
+    entry: ItemResource(SimpleItem),
     resources: {},
 });
 
@@ -77,7 +65,7 @@ const collectionDefaults = agent => ({
 const loaders = {
     // Invalidate an item in the store and clear the corresponding data. Note: does *not* perform a
     // delete operation in the API, only clears the information that's currently in loaded the store.
-    dispose: (Schema : SchemaI, spec) => (...options) => {
+    dispose: (Schema : ItemSchema, spec) => (...options) => {
         const emptyCollection = Schema.empty();
         
         return StorablePromise.from(
@@ -88,7 +76,7 @@ const loaders = {
     },
     
     // Load a complete collection.
-    list: (Schema : SchemaI, spec) => (...options) => {
+    list: (Schema : ItemSchema, spec) => (...options) => {
         return StorablePromise.from(
             Loadable(null),
             { location: spec.store, operation: 'put' },
@@ -112,7 +100,7 @@ const loaders = {
     // Load a partial collection by means of a collection query (ordering, filtering, etc.). Should result
     // in a subset of the collection's entries being loaded in the store. In addition, any query-specific
     // information is returned  to the caller (like ordering, query statistics (count), etc.).
-    // query: (Schema : SchemaI, spec) => (...options) => {
+    // query: (Schema : ItemSchema, spec) => (...options) => {
     //     const decode = response => {
     //         if (typeof Schema === 'function' && response instanceof Schema) {
     //             return response;
@@ -143,8 +131,8 @@ const loaders = {
     // Add a new entry to the collection. This is essentially an operation on a specific entry, not the
     // collection. However, in this case we do not yet have a key. You can think of `create()` as a
     // combination of a "generate key" operation, and a write to that key.
-    create: (Schema : SchemaI, spec) => (item, ...options) => {
-        const EntrySchema = Schema.getEntrySchema();
+    create: (Schema : ItemSchema, spec) => (item, ...options) => {
+        const EntrySchema = spec.entry.schema;
         
         return StorablePromise.from(
             Loadable(null),
@@ -160,7 +148,8 @@ const loaders = {
                     }
                     
                     // Parse the response
-                    const instanceEncoded = spec.parse(response.data);
+                    const parseItem = response => response; // TODO: make configurable
+                    const instanceEncoded = parseItem(response.data);
                     
                     // Parse the encoded instance as an instance of the schema
                     const entryResult = EntrySchema.decode(instanceEncoded);
@@ -171,7 +160,7 @@ const loaders = {
     },
 };
 
-const CollectionResource = (Schema : SchemaI, collectionSpec) => context => {
+const CollectionResource = (Schema : ItemSchema, collectionSpec) => context => {
     const { agent, config } = context;
     
     const isRoot = context.path.length === 0;
@@ -206,9 +195,7 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => context => {
     // Take an index into this collection, and return a new API resource representing that entry resource
     const EntrySchema = Schema.getEntrySchema; // TODO
     const getEntry = index => {
-        const entryPath = [...context.path, index];
-        
-        const itemContext = {
+        const entryContext = {
             agent: context.agent,
             config: context.config,
             path: [...context.path, index],
@@ -216,9 +203,7 @@ const CollectionResource = (Schema : SchemaI, collectionSpec) => context => {
             uri: spec.uri,
         };
         
-        return ItemResource(EntrySchema, {
-            resources: spec.resources,
-        });
+        return spec.entry(entryContext);
     };
     
     // Expose some information about this resource
