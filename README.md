@@ -34,6 +34,12 @@ Each resource has *methods* that you may call. Additionally, each resource may d
 
 ## Item resources
 
+Signature:
+
+```js
+RestApi.Item(ItemModel, resourceSpec)
+```
+
 Methods:
 
   * `get()`
@@ -41,6 +47,10 @@ Methods:
 
 
 ## Collection resources
+
+```js
+RestApi.Collection(CollectionModel, resourceSpec)
+```
 
 Methods:
 
