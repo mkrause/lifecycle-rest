@@ -1,7 +1,38 @@
 
 # lifecycle-rest
 
-Create a REST API client through a declarative API definition.
+Create a REST API client through a declarative API definition. Integrates with state management libraries, like [redux](https://redux.js.org).
+
+Example:
+
+```js
+import RestApi, { createAgent } from '@mkrause/lifecycle-rest';
+
+const agent = createAgent({
+    baseURL: 'https://example.com/api',
+});
+
+const api = RestApi(agent, {
+    resources: {
+        users: RestApi.Collection(UsersCollection, {
+            uri: 'users',
+            entry: RestApi.Item(User),
+            methods: {
+                // Custom methods
+                search: (spec, query) => {
+                    return agent.get(spec.uri, query);
+                },
+            },
+        }),
+    },
+});
+
+// Call the API directly
+const users = await api.users.list();
+
+// Or, dispatch to a redux store
+dispatch(api.users.search({ name: 'Alice' }));
+```
 
 
 ## Usage
