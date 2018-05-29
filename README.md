@@ -14,7 +14,7 @@ import RestApi from '@mkrause/lifecycle-rest';
 const api = RestApi(<agent>, <api-definition>);
 ```
 
-To define your API, you first need to create an *agent* that performs the HTTP requests. We provide a `createAgent` function that wraps around the [axios](https://github.com/axios/axios) library.
+The agent should be an instance of the [axios](https://github.com/axios/axios) library. We provide a `createAgent` helper that you can use that comes with a few useful defaults.
 
 ```js
 import RestApi, { createAgent } from '@mkrause/lifecycle-rest';
@@ -22,22 +22,38 @@ import RestApi, { createAgent } from '@mkrause/lifecycle-rest';
 const agent = createAgent({
     baseURL: 'https://example.com/api',
 });
+```
 
+The API definition consists of a tree of *resource definitions*. A resource definition describes some [REST resource](https://stackoverflow.com/questions/10799198/what-are-rest-resources) in your API. For example, you might have an endpoint `hello` that takes a name and returns a greeting. You could define that resource as follows:
+
+```js
+const greetingApi = RestApi(agent, {
+    uri: 'hello',
+});
+
+// GET https://example.com/api/hello?name=Bob
+const greeting = await greetingApi.get({ name: 'Bob' }); // Returns "Hello Bob!"
+```
+
+Each resource may have *subresources*. Subresources are accessed as properties on the resulting API client:
+
+```js
 const api = RestApi(agent, {
     resources: {
-        users: RestApi.Collection(UsersCollection, {}),
+        users: RestApi.Collection(),
     },
 });
 
+// GET https://example.com/api/users
 const users = await api.users.list();
 ```
 
-The API definition itself is a tree of *resources*. There are two types of resources:
+Notice that we've defined the `users` subresource as a `Collection` resource. There are several types of resources available, and each comes with their own methods.
 
-* Item (default)
-* Collection
+  * Item (default)
+  * Collection
 
-Each resource has *methods* that you may call. Additionally, each resource may define subresources.
+We will describe each resource type below.
 
 
 ## Item resources

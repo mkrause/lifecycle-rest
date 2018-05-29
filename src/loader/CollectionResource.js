@@ -17,6 +17,11 @@ import type { ItemSchema } from './Resource.js';
 import ItemResource, { SimpleResource } from './ItemResource.js';
 
 
+class SimpleCollection {
+    static instantiate() { return {}; }
+    static decode(instanceEncoded : mixed) : Item { return instanceEncoded; }
+    static encode(instance : Item) : mixed { return instance; }
+}
 
 const collectionDefaults = agent => ({
     store: [],
@@ -160,7 +165,7 @@ const loaders = {
     },
 };
 
-const CollectionResource = (Schema : ItemSchema, collectionSpec) => context => {
+const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSpec = {}) => context => {
     const { agent, config } = context;
     
     const isRoot = context.path.length === 0;
