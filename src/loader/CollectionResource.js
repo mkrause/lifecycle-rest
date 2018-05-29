@@ -174,15 +174,15 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
     
     // Parse the collection specification
     const collectionDefaultsWithContext = merge(collectionDefaults(agent), {
-        store: isRoot ? [] : [label],
         uri: isRoot ? '' : label,
+        store: isRoot ? [] : [label],
     });
     const spec = merge(collectionDefaultsWithContext, collectionSpec);
     
     // Make relative
     // TODO: allow the spec to override this and use absolute references instead
-    spec.store = [...context.store, ...spec.store];
     spec.uri = concatUri([context.uri, spec.uri]);
+    spec.store = [...context.store, ...spec.store];
     
     const methods = {
         dispose: loaders.dispose(Schema, spec),
@@ -198,7 +198,6 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
     const customMethods = spec.methods;
     
     // Take an index into this collection, and return a new API resource representing that entry resource
-    const EntrySchema = Schema.getEntrySchema; // TODO
     const getEntry = index => {
         const entryContext = {
             agent: context.agent,

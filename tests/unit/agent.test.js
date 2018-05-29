@@ -40,8 +40,8 @@ describe('agent', () => {
         
         const agent = createAgent();
         
-        // With default options, baseUrl should be undefined
-        expect(agent.defaults).to.have.property('baseUrl', undefined);
+        // With default options, baseURL should be undefined
+        expect(agent.defaults).to.have.property('baseURL', undefined);
         
         // Agent should use Node's `http` as its default adapter
         const response = await agent.get('http://example.com/foo');
@@ -59,7 +59,7 @@ describe('agent', () => {
     
     it('should support setting custom headers', async () => {
         const requestMock = sinon.stub().callsFake(request => {
-            const { method, baseUrl, url, headers } = request;
+            const { method, baseURL, url, headers } = request;
             
             const response = headers['Authentication'] === 'Bearer xyz'
                 ? {
