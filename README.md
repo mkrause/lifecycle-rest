@@ -50,10 +50,12 @@ const users = await api.users.list();
 
 Notice that we've defined the `users` subresource as a `Collection` resource. There are several types of resources available, and each comes with their own methods.
 
-  * Item (default)
+  * Item
   * Collection
 
-We will describe each resource type below.
+Note that if you do not specify the type of the resource explicitly (as in the "greeting" example), then we will create an Item resource by default.
+
+We will describe each resource type in more detail below.
 
 
 ## Item resources
