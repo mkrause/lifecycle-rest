@@ -37,7 +37,18 @@ Each resource has *methods* that you may call. Additionally, each resource may d
 Signature:
 
 ```js
-RestApi.Item(ItemModel, resourceSpec)
+RestApi.Item(ItemSchema, resourceSpec)
+```
+
+Schema:
+
+```js
+type ItemInstance = mixed;
+type ItemSchema = {
+    instantiate : () => ItemInstance,
+    decode : (instanceEncoded : mixed) => ItemInstance;
+    encode : (instance : ItemInstance) => mixed;
+};
 ```
 
 Methods:
@@ -49,7 +60,18 @@ Methods:
 ## Collection resources
 
 ```js
-RestApi.Collection(CollectionModel, resourceSpec)
+RestApi.Collection(CollectionSchema, resourceSpec)
+```
+
+Schema:
+
+```js
+type CollectionInstance = mixed;
+type CollectionSchema = {
+    instantiate : () => CollectionInstance,
+    decode : (instanceEncoded : mixed) => CollectionInstance;
+    encode : (instance : CollectionInstance) => mixed;
+};
 ```
 
 Methods:
