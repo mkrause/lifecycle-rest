@@ -16,9 +16,11 @@ const api = RestApi(agent, {
     resources: {
         users: RestApi.Collection(UsersCollection, {
             uri: 'users',
+            
             entry: RestApi.Item(User),
+            
+            // Custom your own methods
             methods: {
-                // Custom methods
                 search: (spec, query) => {
                     return agent.get(spec.uri, query);
                 },
@@ -30,7 +32,7 @@ const api = RestApi(agent, {
 // Call the API directly
 const users = await api.users.list();
 
-// Or, dispatch to a redux store
+// Or, dispatch to a redux store in order to store the result
 dispatch(api.users.search({ name: 'Alice' }));
 ```
 
