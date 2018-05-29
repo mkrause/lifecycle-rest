@@ -12,6 +12,9 @@ const agent = createAgent({
     baseURL: 'https://example.com/api',
 });
 
+class User { /* ... */ }
+class UsersCollection { /* ... */ }
+
 const api = RestApi(agent, {
     resources: {
         users: RestApi.Collection(UsersCollection, {
