@@ -137,7 +137,7 @@ type CollectionSchema = {
 
 ## Integration with redux
 
-`lifecycle-rest` comes with integration with redux out of the box. To use it, you will need to install the middleware in order to be able to dispatch REST API calls.
+`lifecycle-rest` comes with integration with [redux](https://redux.js.org) out of the box. To use it, you will need to install the middleware in order to be able to dispatch REST API calls.
 
 ```js
 import { createStore, applyMiddleware } from 'redux';
