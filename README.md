@@ -99,17 +99,36 @@ Properties of subresources (like the `uri`) are relative to their parent resourc
 
 ## Resource Types
 
-### `RestApi.Item`
-
-```js
-RestApi.Item(schema, resourceSpec)
-```
+### Resource (common)
 
 Configuration:
 
   * `uri`: The URI of the resource. If relative, will be created relative to the URI of the parent resource. Defaults to the name of the subresource (or empty `""` if this is the root resource).
   * `methods`: Custom methods definitions (see below).
   * `resources`: A map of subresources, if any.
+
+Custom methods can be defined as follows:
+
+```js
+const api = RestApi(agent, {
+    methods: {
+        getCustom: (spec, ...args) => {
+            // Here, `spec` is the resource definition, and `args` contains any remaining arguments
+            
+            return agent.get(spec.uri);
+        },
+    },
+});
+
+api.getCustom('foo');
+```
+
+
+### `RestApi.Item`
+
+```js
+RestApi.Item(schema, resourceSpec)
+```
 
 There are a number of methods implemented on this resource by default:
 
@@ -127,20 +146,6 @@ type ItemSchema = {
 };
 ```
 
-Custom methods can be defined as follows:
-
-```js
-const api = RestApi.Item(Item, {
-    methods: {
-        getCustom: (spec, ...args) => {
-            // Here, `spec` is the resource definition, and `args` contains any remaining arguments
-        },
-    },
-});
-
-api.getCustom('foo', 'bar');
-```
-
 
 ### `RestApi.Collection`
 
@@ -150,9 +155,6 @@ RestApi.Collection(CollectionSchema, resourceSpec)
 
 Configuration:
 
-  * `uri`: The URI of the resource. If relative, will be created relative to the URI of the parent resource. Defaults to the name of the subresource (or empty `""` if this is the root resource).
-  * `methods`: Custom methods definitions (see below).
-  * `resources`: A map of subresources, if any.
   * `entry`: Resource definition for entries of this collection.
 
 There are a number of methods implemented on this resource by default:
