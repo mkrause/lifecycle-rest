@@ -50,20 +50,22 @@ const users = await api.users.list();
 
 Notice that we've defined the `users` subresource as a `Collection` resource. There are several types of resources available, and each comes with their own methods.
 
-  * Item
-  * Collection
+  * `RestApi.Item`
+  * `RestApi.Collection`
 
 Note that if you do not specify the type of the resource explicitly (as in the "greeting" example), then we will create an Item resource by default.
 
-We will describe each resource type in more detail below.
+Properties of subresources (like the `uri`) are relative to their parent resource by default. If the `uri` is not specified we will use the name of the subresource (e.g. `users` in the example above).
 
 
-## Item resources
+## Resource Types
+
+### `RestApi.Item`
 
 Signature:
 
 ```js
-RestApi.Item(ItemSchema, resourceSpec)
+RestApi.Item(schema, resourceSpec)
 ```
 
 Schema:
@@ -83,7 +85,7 @@ Methods:
   * `put()`
 
 
-## Collection resources
+### `RestApi.Collection`
 
 ```js
 RestApi.Collection(CollectionSchema, resourceSpec)
