@@ -135,6 +135,41 @@ type CollectionSchema = {
 ```
 
 
+## Integration with redux
+
+`lifecycle-rest` comes with integration with redux out of the box. To use it, you will need to install the middleware in order to be able to dispatch REST API calls.
+
+```js
+import { createStore, applyMiddleware } from 'redux';
+import { redux as lifecycleRedux } from '@mkrause/lifecycle-rest';
+
+const lifecycleMiddleware = lifecycleRedux.middleware;
+const store = createStore(reducer, initialState, applyMiddleware(lifecycleMiddleware));
+```
+
+Now, you can use `dispatch` to dispatch API calls as follows:
+
+```js
+const api = RestApi(...);
+
+// Somewhere in your application:
+dispatch(api.users.get());
+```
+
+This will result in two actions being dispatched: a *loading* action right at the start of the call. Then later either a *ready* or *failed* action when the API call gets a response. You can handle these actions yourself in your reducer, or if you want you can use the standard reducer provided by this library:
+
+```js
+import { createStore, applyMiddleware } from 'redux';
+import { redux as lifecycleRedux } from '@mkrause/lifecycle-rest';
+
+const lifecycleMiddleware = lifecycleRedux.middleware;
+const reducers = [lifecycleRedux.reducer]; // Add your own reducers
+
+const reducer = (state, action) =>
+    reducers.reduce((state, reducer) => reducer(state, action), state);
+const store = createStore(reducer, initialState, applyMiddleware(lifecycleMiddleware));
+```
+
 
 ## Similar libraries
 
