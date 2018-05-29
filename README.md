@@ -8,7 +8,7 @@ Declarative REST API definition utility.
 
 To define your API, you first need to create an *agent* that performs the HTTP requests. We provide a `createAgent` function that wraps around the [axios](https://github.com/axios/axios) library.
 
-js```
+```js
 import RestApi, { createAgent } from '@mkrause/lifecycle-rest';
 
 const agent = createAgent({
