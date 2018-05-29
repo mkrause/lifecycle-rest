@@ -20,7 +20,7 @@ describe('RestApi', () => {
     describe('item resource', () => {
         const agentMock = createAgent({
             adapter: request => {
-                const { method, baseUrl, url, params } = request;
+                const { method, url, params } = request;
                 
                 if (url === '/') {
                     const users = [
@@ -78,7 +78,7 @@ describe('RestApi', () => {
     describe('collection resource', () => {
         const agentMock = createAgent({
             adapter: request => {
-                const { method, baseUrl, url, params } = request;
+                const { method, url, params } = request;
                 
                 if (url === '/users') {
                     const users = [
@@ -195,7 +195,7 @@ describe('RestApi', () => {
         it('should support list()', async () => {
             const agentMock = createAgent({
                 adapter: request => {
-                    const { method, baseUrl, url } = request;
+                    const { method, url } = request;
                     
                     // Simulate an async request
                     return new Promise(resolve => {

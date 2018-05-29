@@ -25,7 +25,7 @@ describe('ItemResource', () => {
     
     const agentMock = createAgent({
         adapter: async request => {
-            const { method, baseUrl, url, params } = request;
+            const { method, url, params } = request;
             
             if (method === 'get' && url === '/api') {
                 const item = {

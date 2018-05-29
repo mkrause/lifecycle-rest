@@ -66,7 +66,7 @@ describe('CollectionResource', () => {
     
     const agentMock = createAgent({
         adapter: async request => {
-            const { method, baseUrl, url, params } = request;
+            const { method, url, params } = request;
             
             const users = [
                 { user_id: 'user42', name: 'John' },
