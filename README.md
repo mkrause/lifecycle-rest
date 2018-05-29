@@ -35,7 +35,7 @@ const api = RestApi(agent, {
 // Call the API directly
 const users = await api.users.list();
 
-// Access collection entries (configurable through the `entry` property)
+// Index into a collection to access an entry (configurable through the `entry` property)
 const john = await api.users('john').get();
 
 // Or, dispatch to a redux store in order to store the result
