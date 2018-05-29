@@ -62,27 +62,45 @@ Properties of subresources (like the `uri`) are relative to their parent resourc
 
 ### `RestApi.Item`
 
-Signature:
-
 ```js
 RestApi.Item(schema, resourceSpec)
 ```
 
+Configuration:
+
+  * `uri`: The URI of the resource. If relative, will be created relative to the URI of the parent resource. Defaults to the name of the subresource (or empty `""` if this is the root resource).
+  * `methods`: Custom methods definitions (see below).
+  * `resources`: A map of subresources, if any.
+
+There are a number of methods implemented on this resource by default:
+
+  * `get(params : Object)`: Perform a GET request, using `params` as the query parameters.
+  * `put(item : Item, params : Object)`: Perform a PUT request, where `item` is the resource to send.
+
 Schema:
 
 ```js
-type ItemInstance = mixed;
+type Item = mixed;
 type ItemSchema = {
-    instantiate : () => ItemInstance,
-    decode : (instanceEncoded : mixed) => ItemInstance;
-    encode : (instance : ItemInstance) => mixed;
+    instantiate : () => Item,
+    decode : (instanceEncoded : mixed) => Item;
+    encode : (instance : Item) => mixed;
 };
 ```
 
-Methods:
+Custom methods can be defined as follows:
 
-  * `get()`
-  * `put()`
+```js
+const api = RestApi.Item(Item, {
+    methods: {
+        getCustom: (spec, ...args) => {
+            // Here, `spec` is the resource definition, and `args` contains any remaining arguments
+        },
+    },
+});
+
+api.getCustom('foo', 'bar');
+```
 
 
 ### `RestApi.Collection`
@@ -91,22 +109,31 @@ Methods:
 RestApi.Collection(CollectionSchema, resourceSpec)
 ```
 
+Configuration:
+
+  * `uri`: The URI of the resource. If relative, will be created relative to the URI of the parent resource. Defaults to the name of the subresource (or empty `""` if this is the root resource).
+  * `methods`: Custom methods definitions (see below).
+  * `resources`: A map of subresources, if any.
+  * `entry`: Resource definition for entries of this collection.
+
+There are a number of methods implemented on this resource by default:
+
+  * `list(params : Object)`: Perform a GET request, using `params` as the query parameters.
+  * `put(collection : Collection, params : Object)`: Perform a PUT request, where `collection` is the resource to send.
+  * `create(entry : Entry)`. Create a new entry in the collection. Requires the `entry` property to be defined in order to determine the resource type (`Entry`).
+
+
 Schema:
 
 ```js
-type CollectionInstance = mixed;
+type Collection = mixed;
 type CollectionSchema = {
-    instantiate : () => CollectionInstance,
-    decode : (instanceEncoded : mixed) => CollectionInstance;
-    encode : (instance : CollectionInstance) => mixed;
+    instantiate : () => Collection,
+    decode : (instanceEncoded : mixed) => Collection;
+    encode : (instance : Collection) => mixed;
 };
 ```
 
-Methods:
-
-  * `list()`
-  * `create()`
-  * `put()`
 
 
 ## Similar libraries
