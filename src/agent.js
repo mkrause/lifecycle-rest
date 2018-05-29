@@ -5,7 +5,7 @@ import axios from 'axios';
 
 
 const optionsDefaults = {
-    baseUrl: undefined,
+    baseURL: undefined,
     
     headers: {
         'User-Agent': undefined,
