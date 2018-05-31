@@ -35,4 +35,25 @@ export const update = (state, action) => match(action, {
 });
 */
 
-export default (state, action) => state; // TODO
+//import match from '@mkrause/match';
+
+
+const setIn = (state, path, value) => {
+    if ('setIn' in state) {
+        return state.setIn(path, value);
+    } else {
+        throw new Error('TODO');
+    }
+};
+
+export default (state, action) => {
+    if (!/^lifecycle/.test(action.type)) {
+        return state;
+    }
+    
+    console.log('path', action.path);
+    
+    // TOOD: update requests map
+    
+    return setIn(state, action.path, action.item);
+};

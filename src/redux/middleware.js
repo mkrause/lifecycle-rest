@@ -25,33 +25,38 @@ export default (configIn = {}) => {
             return next(action);
         }
         
-        const actionType = `${config.prefix}:${locationToString(action.spec.location)}`;
+        const storableSpec = action.spec;
+        
+        const actionType = `${config.prefix}:${locationToString(storableSpec.location)}`;
         
         const requestId = uuid();
         
         store.dispatch({
-            type: actionType,
+            type: `${actionType}:loading`,
+            path: storableSpec.location,
             state: 'loading',
             request: requestId,
-            item: action.item,
+            item: action.item, // TODO: accessor?
         });
         
         action
             .then(
                 result => {
                     store.dispatch({
-                        type: actionType,
+                        type: `${actionType}:ready`,
+                        path: storableSpec.location,
                         state: 'ready',
                         request: requestId,
-                        item: result,
+                        item: storableSpec.accessor(result),
                     });
                 },
                 reason => {
                     store.dispatch({
-                        type: actionType,
+                        type: `${actionType}:failed`,
+                        path: storableSpec.location,
                         state: 'failed',
                         request: requestId,
-                        item: reason.item,
+                        item: reason.item, // TODO: accessor?
                     });
                 },
             );
