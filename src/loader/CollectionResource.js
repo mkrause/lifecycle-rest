@@ -188,14 +188,16 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
         .filter(([methodName, method]) => methodName[0] !== '_')
         .map(([methodName, method]) => {
             const methodDecorated = (...args) => {
-                const methodResult = method({ spec, agent }, ...args);
+                const storable = (storableSpec = {}, promise) => {
+                    return StorablePromise.from(Loadable(null), { location: spec.store, ...storableSpec }, promise);
+                }
+                
+                const methodResult = method({ spec, agent, storable }, ...args);
                 
                 if (methodResult instanceof StorablePromise) {
                     return methodResult;
                 } else if (methodResult instanceof Promise) {
-                    return StorablePromise.from(
-                        Loadable(null),
-                        { location: spec.store, operation: 'put' },
+                    return storable({},
                         methodResult
                             .then(response => {
                                 const responseParsed = parse(response);

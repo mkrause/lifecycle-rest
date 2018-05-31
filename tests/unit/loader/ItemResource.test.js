@@ -209,7 +209,7 @@ describe('ItemResource', () => {
                         customGet({ spec, agent }, query) {
                             return StorablePromise.from(
                                 Loadable(null),
-                                { location: spec.location, operation: 'put' },
+                                { location: spec.store, operation: 'put' },
                                 agentMock.get('/api/user')
                                     .then(response => response.data),
                             );
