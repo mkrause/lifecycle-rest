@@ -185,8 +185,7 @@ describe('ItemResource', () => {
         expect(user).to.deep.equal({ user_id: 42, name: 'Alice' });
     });
     
-    
-    it('should support custom methods', async () => {
+    it('should support custom methods — returning a storable promise', async () => {
         const api = ItemResource(SimpleItem, {
             store: ['app'],
             uri: '/api',
@@ -196,25 +195,37 @@ describe('ItemResource', () => {
                     uri: 'user',
                     methods: {
                         customGet({ spec, agent }, query) {
-                            // return StorablePromise.from(
-                            //     Loadable(null),
-                            //     { location: [], operation: 'put' },
-                            //     agentMock.get('/api/user')
-                            //         .then(response => response.data),
-                            // );
-                            
-                            // return StorablePromise.from(
-                            //     Loadable(null),
-                            //     {
-                            //         location: [],
-                            //         operation: async (current, result) => {
-                            //             return current.merge(result);
-                            //         },
-                            //     },
-                            //     agentMock.get('/api/user')
-                            //         .then(response => response.data),
-                            // );
-                            
+                            return StorablePromise.from(
+                                Loadable(null),
+                                { location: [], operation: 'put' },
+                                agentMock.get('/api/user')
+                                    .then(response => response.data),
+                            );
+                        },
+                    },
+                }),
+            },
+        })(context);
+        
+        const userPromise = api.user.customGet({ name: 'Alice' });
+        
+        expect(userPromise).to.be.an.instanceOf(StorablePromise);
+        
+        const user = await userPromise;
+        
+        expect(user).to.deep.equal({ name: 'Alice' });
+    });
+    
+    it('should support custom methods — returning a plain promise', async () => {
+        const api = ItemResource(SimpleItem, {
+            store: ['app'],
+            uri: '/api',
+            resources: {
+                user: ItemResource(User, {
+                    store: ['user'],
+                    uri: 'user',
+                    methods: {
+                        customGet({ spec, agent }, query) {
                             return agent.get(spec.uri, { params: query });
                         },
                     },
