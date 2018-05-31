@@ -16,8 +16,8 @@ const configDefault = {
     prefix: 'lifecycle',
 };
 
-export default (configIn = {}) => {
-    const config = merge(configDefault, configIn);
+export default (_config = {}) => {
+    const config = merge(configDefault, _config);
     
     return store => next => action => {
         // Only handle actions that are of type StorablePromise
@@ -36,7 +36,7 @@ export default (configIn = {}) => {
             path: storableSpec.location,
             state: 'loading',
             request: requestId,
-            item: action.item, // TODO: accessor?
+            item: action.item, // TODO: apply accessor?
         });
         
         action
@@ -56,7 +56,7 @@ export default (configIn = {}) => {
                         path: storableSpec.location,
                         state: 'failed',
                         request: requestId,
-                        item: reason.item, // TODO: accessor?
+                        item: reason.item, // TODO: apply accessor?
                     });
                 },
             );

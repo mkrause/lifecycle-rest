@@ -1,59 +1,89 @@
+// @flow
 
-/*
-// Redux reducer. Takes API-related actions and updates the store accordingly.
-export const update = (state, action) => match(action, {
-    [match.default]: state,
-    // Load data into the API (either new, or updates of existing data)
-    'api.load': ({ requestId, status, path, value }) => {
-        const stateWithRequest = state.update('requests', requests => {
-            if (requestId === undefined) {
-                return requests;
-            }
-            
-            if (status === 'ready') {
-                return requests.remove(requestId);
-            } else {
-                return requests.set(requestId, { status });
-            }
-        });
-        
-        return stateWithRequest.setIn(path, value);
-    },
-    
-    // Clear data from the API
-    'api.dispose': ({ path }) => {
-        const current = state.getIn(path);
-        if (current === undefined) {
-            return state;
-        } else if (current instanceof Collection) {
-            // Empty the collection
-            return state.setIn(path, current.clear());
-        } else {
-            return state.removeIn(path);
-        }
-    },
-});
-*/
+import match from '@mkrause/match';
+import $msg from 'message-tag';
 
-//import match from '@mkrause/match';
+import merge from '../util/merge.js';
 
 
-const setIn = (state, path, value) => {
-    if ('setIn' in state) {
-        return state.setIn(path, value);
-    } else {
-        throw new Error('TODO');
-    }
+type Step = string;
+type Path = Array<Step>;
+
+const isPlainObject = obj => {
+    const proto = Object.getPrototypeOf(obj);
+    return proto === null || proto === Object.prototype;
 };
 
-export default (state, action) => {
-    if (!/^lifecycle/.test(action.type)) {
-        return state;
+const setIn = (state, path : Path, value) => {
+    if (path.length === 0) {
+        return value;
     }
     
-    console.log('path', action.path);
+    const [step, ...tail] = path;
     
-    // TOOD: update requests map
+    // Reject updating a child of an empty state type. The user is expected to at the very least initialize
+    // state to an object or some other supported data structure.
+    if (state === undefined || state === null) {
+        throw new TypeError($msg`Cannot set value in empty state, given ${state} [at ${path}]`);
+    }
     
-    return setIn(state, action.path, action.item);
+    if (typeof state === 'object') { // Note: already checked to not be `null`
+        // Note: check plain object first, so that we do not accidentally match a `get`/`set` property
+        // on a plain object
+        if (isPlainObject(state)) {
+            if (tail.length === 0) {
+                return { ...state, [step]: value };
+            } else if (Object.prototype.hasOwnProperty.call(state, step)) {
+                return { ...state, [step]: setIn(state[step], tail, value) };
+            } else {
+                // Refuse to create steps "in between". We could chose to create new objects with
+                // just the single step as key, but unless we see a clear use case we will reject.
+                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+            }
+        } else if ('setIn' in state) {
+            return state.setIn(path, value);
+        } else if ('has' in state && 'get' in state && 'set' in state) {
+            if (tail.length === 0) {
+                return state.set(step, value);
+            } else if (state.has(step)) {
+                return state.set(step, setIn(state.get(step), tail, value));
+            } else {
+                // Cannot create steps "in between", would require us to know what constructor to use
+                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+            }
+        }
+    }
+    
+    if (Array.isArray(state)) {
+        let index = step;
+        if (typeof step === 'string') {
+            if (!/^[0-9]+$/.test(step)) {
+                throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step} [at ${path}]`);
+            }
+            index = parseInt(step);
+        }
+        
+        const stateShallowCopy = [...state];
+        stateShallowCopy[index] = value;
+        return stateShallowCopy;
+    }
+    
+    throw new TypeError($msg`Cannot update value of unknown state type ${state} [at ${path}]`);
+};
+
+export default (_config = {}) => {
+    const configDefaults = { prefix: 'lifecycle', trackRequests: false, requestsPath: ['requests'] };
+    const config = merge(configDefaults, _config);
+    
+    return (state, action) => {
+        if (!action.type.startsWith(`${config.prefix}:`)) {
+            return state;
+        }
+        
+        //
+        // TOOD: update requests map
+        //
+        
+        return setIn(state, action.path, action.item);
+    };
 };
