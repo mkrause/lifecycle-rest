@@ -36,6 +36,18 @@ describe('ItemResource', () => {
                 };
                 
                 return Promise.resolve({ data: user });
+            } else if (method === 'get' && url === '/api/user/query') {
+                const user = {
+                    name: 'Alice',
+                    profile: 'Lorem ipsum...',
+                };
+                
+                const response = {
+                    metadata: { profile_length: 1000 },
+                    item: user,
+                };
+                
+                return Promise.resolve({ data: response });
             } else if (method === 'put' && url === '/api/user') {
                 const userRequest = JSON.parse(request.data);
                 
@@ -197,7 +209,7 @@ describe('ItemResource', () => {
                         customGet({ spec, agent }, query) {
                             return StorablePromise.from(
                                 Loadable(null),
-                                { location: [], operation: 'put' },
+                                { location: spec.location, operation: 'put' },
                                 agentMock.get('/api/user')
                                     .then(response => response.data),
                             );
@@ -240,5 +252,57 @@ describe('ItemResource', () => {
         const user = await userPromise;
         
         expect(user).to.deep.equal({ name: 'Alice' });
+    });
+    
+    it('should support custom methods — returning a custom result', async () => {
+        const api = ItemResource(SimpleItem, {
+            store: ['app'],
+            uri: '/api',
+            resources: {
+                user: ItemResource(User, {
+                    store: ['user'],
+                    uri: 'user',
+                    methods: {
+                        query({ spec, agent }, query) {
+                            return StorablePromise.from(
+                                Loadable(null),
+                                {
+                                    location: spec.location,
+                                    operation: 'merge',
+                                    accessor: queryResult => queryResult.user,
+                                },
+                                agentMock.get('/api/user/query')
+                                    .then(response => {
+                                        const parse = response => response.data;
+                                        const decode = User.decode;
+                                        
+                                        const responseParsed = parse(response);
+                                        
+                                        return {
+                                            user: decode(responseParsed.item),
+                                            metadata: {
+                                                profileLength: responseParsed.metadata.profile_length,
+                                            },
+                                        };
+                                    }),
+                            );
+                        },
+                    },
+                }),
+            },
+        })(context);
+        
+        const resultPromise = api.user.query({ name: 'Alice' });
+        
+        expect(resultPromise).to.be.an.instanceOf(StorablePromise);
+        
+        const result = await resultPromise;
+        
+        expect(result).to.deep.equal({
+            user: { name: 'Alice', profile: 'Lorem ipsum...' },
+            metadata: {
+                profileLength: 1000,
+            },
+        });
     });
 });
