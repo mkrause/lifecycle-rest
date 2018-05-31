@@ -23,6 +23,7 @@ export type Spec = {
     // The operation to perform on the store
     // Note: "clearing" an item can be done by updating with an invalidated loadable (empty value).
     operation :
+        | 'skip' // Do nothing
         | 'put' // Place the item in the store wholesale
         | 'merge' // Merge the given item with the existing one
         | 'update' // Apply a function that takes the current value and returns an updated version

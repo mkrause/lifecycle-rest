@@ -295,6 +295,10 @@ describe('ItemResource', () => {
         const resultPromise = api.user.query({ name: 'Alice' });
         
         expect(resultPromise).to.be.an.instanceOf(StorablePromise);
+        expect(resultPromise.spec.operation).to.equal('merge');
+        expect(resultPromise.spec.accessor).satisfy(accessor => {
+            return accessor({ user: 'foo' }) === 'foo';
+        });
         
         const result = await resultPromise;
         
