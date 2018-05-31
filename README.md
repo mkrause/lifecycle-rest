@@ -24,7 +24,7 @@ const api = RestApi(agent, {
             
             // Custom methods
             methods: {
-                search: (spec, query) => {
+                search: ({ spec }, query) => {
                     return agent.get(spec.uri, query);
                 },
             },
