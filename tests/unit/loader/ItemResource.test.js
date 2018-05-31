@@ -267,7 +267,7 @@ describe('ItemResource', () => {
                             return StorablePromise.from(
                                 Loadable(null),
                                 {
-                                    location: spec.location,
+                                    location: spec.store,
                                     operation: 'merge',
                                     accessor: queryResult => queryResult.user,
                                 },

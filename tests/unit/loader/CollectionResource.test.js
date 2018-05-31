@@ -59,14 +59,9 @@ describe('CollectionResource', () => {
         }
     }
     
-    // Simulate an async response
-    const makeResponse = response => new Promise(resolve => {
-        setTimeout(() => { resolve(response); }, 0);
-    });
-    
     const agentMock = createAgent({
         adapter: async request => {
-            const { method, url, params } = request;
+            const { method, url, params, headers } = request;
             
             const users = [
                 { user_id: 'user42', name: 'John' },
@@ -75,14 +70,26 @@ describe('CollectionResource', () => {
             
             let matches;
             if (url === '/users' && method === 'get') {
-                return await makeResponse({ data: users });
+                if (headers['Accept'] && headers['Accept'] === 'application/vnd.query+json') {
+                    const usersQueried = users.filter(user => user.name === params.name);
+                    
+                    const response = {
+                        items: usersQueried,
+                        metadata: {
+                            total: 999,
+                        },
+                    };
+                    return Promise.resolve({ data: response });
+                }
+                
+                return Promise.resolve({ data: users });
             } else if (url === '/users' && method === 'post') {
                 const user = User.decode(JSON.parse(request.data));
                 const userWithId = { ...user, user_id: 'user44' };
-                return await makeResponse({ data: User.encode(userWithId) });
+                return Promise.resolve({ data: User.encode(userWithId) });
             } else if ((matches = url.match(/^[/]users[/]([^/]+)$/)) && method === 'get') {
                 const user = users.filter(user => user.user_id === matches[1])[0];
-                return await makeResponse({ data: user });
+                return Promise.resolve({ data: user });
             } else {
                 throw new Error($msg`Unknown route ${method} ${url}`);
             }
@@ -128,5 +135,54 @@ describe('CollectionResource', () => {
         const user = await api.create({ name: 'Bob' });
         
         expect(user).to.deep.equal({ user_id: 'user44', name: 'Bob' });
+    });
+    
+    it('should support custom methods', async () => {
+        const api = CollectionResource(UsersCollection, {
+            uri: '/users',
+            methods: {
+                query({ spec, agent }, query) {
+                    return StorablePromise.from(
+                        Loadable(null),
+                        {
+                            location: spec.store,
+                            operation: 'merge',
+                            accessor: queryResult => queryResult.users,
+                        },
+                        agent.get('/users', { headers: { 'Accept': 'application/vnd.query+json' }, params: query })
+                            .then(response => {
+                                const parse = response => response.data;
+                                const decode = UsersCollection.decode;
+                                
+                                const responseParsed = parse(response);
+                                
+                                return {
+                                    users: decode(responseParsed.items),
+                                    metadata: {
+                                        total: responseParsed.metadata.total,
+                                    },
+                                };
+                            }),
+                    );
+                },
+            },
+        })(context);
+        
+        const resultPromise = api.query({ name: 'Alice' });
+        
+        expect(resultPromise).to.be.an.instanceOf(StorablePromise);
+        expect(resultPromise.spec.operation).to.equal('merge');
+        expect(resultPromise.spec.accessor).satisfy(accessor => {
+            return accessor({ users: 'foo' }) === 'foo';
+        });
+        
+        const result = await resultPromise;
+        
+        expect(result).to.deep.equal({
+            users: { user43: { user_id: 'user43', name: 'Alice' } },
+            metadata: {
+                total: 999,
+            },
+        });
     });
 });

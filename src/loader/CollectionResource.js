@@ -34,7 +34,7 @@ const collectionDefaults = agent => ({
         }
     },
     methods: {
-        query: async (spec, decode, query) => {
+        _query: async (spec, decode, query) => {
             const items = decode(await agent.get(spec.uri, { params: query }));
             
             // Note: user-defined implementations will likely add more info here, like counts for
@@ -45,10 +45,10 @@ const collectionDefaults = agent => ({
             
             return queryResult;
         },
-        list: (spec, { hint = null } = {}) => {
+        _list: (spec, { hint = null } = {}) => {
             return agent.get(spec.uri);
         },
-        create: (spec, item) => {
+        _create: (spec, item) => {
             return agent.post(spec.uri, spec.entry.schema.encode(item));
         },
         // get: (spec, index) => {
@@ -71,7 +71,7 @@ const loaders = {
     // Invalidate an item in the store and clear the corresponding data. Note: does *not* perform a
     // delete operation in the API, only clears the information that's currently in loaded the store.
     dispose: (Schema : ItemSchema, spec) => (...options) => {
-        const emptyCollection = Schema.empty();
+        const emptyCollection = Schema.instantiate();
         
         return StorablePromise.from(
             Loadable(null),
@@ -85,7 +85,7 @@ const loaders = {
         return StorablePromise.from(
             Loadable(null),
             { location: spec.store, operation: 'put' },
-            spec.methods.list(spec, ...options)
+            spec.methods._list(spec, ...options)
                 .then(response => {
                     if (typeof Schema === 'function' && response instanceof Schema) {
                         return response;
@@ -142,7 +142,7 @@ const loaders = {
         return StorablePromise.from(
             Loadable(null),
             { location: spec.store, operation: 'put' },
-            spec.methods.create(spec, item, ...options)
+            spec.methods._create(spec, item, ...options)
                 .then(response => {
                     // Note: we need at minimum the key of the item that has been created. Usually the
                     // result of a create operation will the item as it would be returned by a get on
@@ -184,6 +184,33 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
     spec.uri = concatUri([context.uri, spec.uri]);
     spec.store = [...context.store, ...spec.store];
     
+    const customMethods = Object.entries(spec.methods)
+        .filter(([methodName, method]) => methodName[0] !== '_')
+        .map(([methodName, method]) => {
+            const methodDecorated = (...args) => {
+                const methodResult = method({ spec, agent }, ...args);
+                
+                if (methodResult instanceof StorablePromise) {
+                    return methodResult;
+                } else if (methodResult instanceof Promise) {
+                    return StorablePromise.from(
+                        Loadable(null),
+                        { location: spec.store, operation: 'put' },
+                        methodResult
+                            .then(response => {
+                                const responseParsed = parse(response);
+                                return Schema.decode(responseParsed);
+                            }),
+                    );
+                } else {
+                    throw new TypeError($msg`Unknown result ${methodResult}`);
+                }
+            };
+            
+            return [methodName, methodDecorated];
+        })
+        .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
+    
     const methods = {
         dispose: loaders.dispose(Schema, spec),
         list: loaders.list(Schema, spec),
@@ -194,8 +221,6 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
         // put: loaders.put(Schema, spec),
         // patch: loaders.patch(Schema, spec),
     };
-    
-    const customMethods = spec.methods;
     
     // Take an index into this collection, and return a new API resource representing that entry resource
     const getEntry = index => {
@@ -215,7 +240,7 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
         _spec: spec,
     };
     
-    return Object.assign(getEntry, customMethods, methods, info);
+    return Object.assign(getEntry, methods, customMethods, info);
 };
 
 export default CollectionResource;
