@@ -23,7 +23,12 @@ describe('StorablePromise', () => {
             expect(promise).to.be.an.instanceOf(StorablePromise);
             
             // Should expose its spec
-            expect(promise).to.have.property('spec').to.deep.equal(spec);
+            expect(promise).to.have.property('spec');
+            expect(promise.spec).to.have.property('location').to.deep.equal(spec.location);
+            expect(promise.spec).to.have.property('operation').to.deep.equal(spec.operation);
+            expect(promise.spec).to.have.property('accessor').to.satisfy(accessor => {
+                return accessor('foo') === 'foo'; // Should be the identity function
+            });
         });
     });
     
@@ -138,7 +143,13 @@ describe('StorablePromise', () => {
             );
             
             expect(promise).to.be.an.instanceOf(StorablePromise);
-            expect(promise).to.have.property('spec').to.deep.equal(spec);
+            
+            expect(promise).to.have.property('spec');
+            expect(promise.spec).to.have.property('location').to.deep.equal(spec.location);
+            expect(promise.spec).to.have.property('operation').to.deep.equal(spec.operation);
+            expect(promise.spec).to.have.property('accessor').to.satisfy(accessor => {
+                return accessor('foo') === 'foo'; // Should be the identity function
+            });
             
             const result = await promise;
             

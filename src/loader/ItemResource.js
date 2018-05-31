@@ -1,16 +1,26 @@
 // @flow
 
+import $msg from 'message-tag';
+
 import env from '../util/env.js';
 import merge from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
+import { status, Loadable } from '@mkrause/lifecycle-loader';
+import type { LoadableT } from '@mkrause/lifecycle-loader';
+
+import StorablePromise from './StorablePromise.js';
+
 
 const itemDefaults = {
     store: [],
     uri: '',
     resources: {},
+    methods: {
+        
+    },
 };
 
 const parse = response => {
@@ -42,14 +52,56 @@ const ItemResource = (Schema, itemSpec = {}) => {
         spec.store = [...context.store, ...spec.store];
         spec.uri = concatUri([context.uri, spec.uri]);
         
+        const customMethods = Object.entries(spec.methods)
+            .filter(([methodName, method]) => methodName[0] !== '_')
+            .map(([methodName, method]) => {
+                const methodDecorated = (...args) => {
+                    const methodResult = method({ spec, agent }, ...args);
+                    
+                    if (methodResult instanceof StorablePromise) {
+                        return methodResult;
+                    } else if (methodResult instanceof Promise) {
+                        return StorablePromise.from(
+                            Loadable(null),
+                            { location: spec.store, operation: 'put' },
+                            methodResult
+                                .then(response => {
+                                    const responseParsed = parse(response);
+                                    return Schema.decode(responseParsed);
+                                }),
+                        );
+                    } else {
+                        throw new TypeError($msg`Unknown result ${methodResult}`);
+                    }
+                };
+                
+                return [methodName, methodDecorated];
+            })
+            .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
+        
         const methods = {
-            async get(params = {}) {
-                return Schema.decode(parse(await agent.get(spec.uri, { params })));
+            get(params = {}) {
+                return StorablePromise.from(
+                    Loadable(null),
+                    { location: spec.store, operation: 'put' },
+                    agent.get(spec.uri, { params })
+                        .then(response => {
+                            return Schema.decode(parse(response));
+                        }),
+                );
             },
             
-            async put(item, params = {}) {
-                return Schema.decode(parse(await agent.put(spec.uri, format(Schema.encode(item)), { params })));
+            put(item, params = {}) {
+                return StorablePromise.from(
+                    Loadable(null),
+                    { location: spec.store, operation: 'put' },
+                    agent.put(spec.uri, format(Schema.encode(item)), { params })
+                        .then(response => {
+                            return Schema.decode(parse(response));
+                        }),
+                );
             },
+            ...customMethods,
         };
         
         // Subresources
