@@ -8,7 +8,7 @@ const optionsDefaults = {
     baseURL: undefined,
     
     headers: {
-        'User-Agent': undefined,
+        //'User-Agent': undefined,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         //'Authorization': '...',
