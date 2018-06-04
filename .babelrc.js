@@ -6,7 +6,7 @@ module.exports = {
         '@babel/flow',
         ['@babel/env', {
             targets: {
-                node: '8.0',
+                node: '6.9', // LTS (Boron)
                 browsers: ['>0.25%', 'not dead'],
             },
             
