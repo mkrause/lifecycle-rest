@@ -9,7 +9,6 @@ import { concatUri } from '../util/uri.js';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 import type { LoadableT } from '@mkrause/lifecycle-loader';
-import { Entity, Collection, Schema } from '@mkrause/lifecycle-immutable';
 
 import StorablePromise from './StorablePromise.js';
 import { SimpleItem } from './Resource.js';
