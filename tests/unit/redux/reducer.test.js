@@ -162,4 +162,9 @@ describe('redux reducer', () => {
             });
         });
     });
+    
+    describe('on compatible immutable data structures', () => {
+        // Immutable data structures that support get(), set(), etc.
+        it('TODO');
+    });
 });
