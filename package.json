@@ -18,6 +18,7 @@
         "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --source-maps inline",
         "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --source-maps inline",
         "test": "NODE_ENV=development BABEL_ENV=cjs mocha --require @babel/register --recursive tests",
+        "prepare": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs",
         "prepublishOnly": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs"
     },
     "devDependencies": {
@@ -45,8 +46,7 @@
         "message-tag": "^0.2.1",
         "object-merge-advanced": "^10.2.2",
         "axios": "^0.18.0",
-        "@mkrause/lifecycle-loader": "file:../lifecycle-loader",
-        "@mkrause/lifecycle-immutable": "file:../lifecycle-immutable",
+        "@mkrause/lifecycle-loader": "git+https://git@github.com/mkrause/lifecycle-loader",
         "redux": "^4.0.0"
     }
 }
