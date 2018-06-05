@@ -1,6 +1,6 @@
 {
     "name": "@mkrause/lifecycle-rest",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "Lifecycle REST API loader",
     "author": "mkrause",
     "license": "MIT",
@@ -46,7 +46,7 @@
         "message-tag": "^0.2.1",
         "object-merge-advanced": "^10.2.2",
         "axios": "^0.18.0",
-        "@mkrause/lifecycle-loader": "git+https://git@github.com/mkrause/lifecycle-loader",
+        "@mkrause/lifecycle-loader": "^0.0.1",
         "redux": "^4.0.0"
     }
 }
