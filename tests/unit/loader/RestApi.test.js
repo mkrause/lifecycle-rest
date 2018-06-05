@@ -9,7 +9,6 @@ import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
-import { Entity, Collection } from '@mkrause/lifecycle-immutable';
 
 import createAgent from '../../../src/agent.js';
 import StorablePromise from '../../../src/loader/StorablePromise.js';
