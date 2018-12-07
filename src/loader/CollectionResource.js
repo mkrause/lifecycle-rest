@@ -199,7 +199,7 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
                     return storable({},
                         methodResult
                             .then(response => {
-                                const responseParsed = parse(response);
+                                const responseParsed = spec.parse(response);
                                 return Schema.decode(responseParsed);
                             }),
                     );
