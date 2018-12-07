@@ -141,7 +141,7 @@ const loaders = {
         return StorablePromise.from(
             Loadable(null),
             { location: spec.store, operation: 'put' },
-            spec.methods._create(spec, item, ...options)
+            spec.methods._create({ spec }, item, ...options)
                 .then(response => {
                     // Note: we need at minimum the key of the item that has been created. Usually the
                     // result of a create operation will the item as it would be returned by a get on
@@ -199,7 +199,7 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
                     return storable({},
                         methodResult
                             .then(response => {
-                                const responseParsed = spec.parse(response);
+                                const responseParsed = spec.parse(response.data);
                                 return Schema.decode(responseParsed);
                             }),
                     );
