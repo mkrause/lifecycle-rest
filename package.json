@@ -39,7 +39,6 @@
         "uuid": "^3.3.3",
         "@mkrause/match": "^1.2.2",
         "moment": "^2.24.0",
-        "lodash": "^4.17.15",
         "immutable": "^4.0.0-rc.12",
         "uri-tag": "^1.1.0",
         "message-tag": "^0.4.0",
