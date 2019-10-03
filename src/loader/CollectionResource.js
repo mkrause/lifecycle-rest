@@ -47,7 +47,7 @@ const collectionDefaults = agent => ({
         _list: (spec, { hint = null } = {}) => {
             return agent.get(spec.uri);
         },
-        _create: (spec, item) => {
+        _create: ({ spec }, item) => {
             return agent.post(spec.uri, spec.entry.schema.encode(item));
         },
         // get: (spec, index) => {

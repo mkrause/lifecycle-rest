@@ -41,14 +41,14 @@ describe('agent', () => {
         const agent = createAgent();
         
         // With default options, baseURL should be undefined
-        expect(agent.defaults).to.have.property('baseURL', undefined);
+        expect(agent.defaults).to.not.have.property('baseURL');
         
         // Agent should use Node's `http` as its default adapter
         const response = await agent.get('http://example.com/foo');
         
         sinon.assert.calledOnce(requestMock);
         sinon.assert.calledWith(requestMock, sinon.match.has('hostname', 'example.com'));
-        sinon.assert.calledWith(requestMock, sinon.match.has('method', 'get'));
+        sinon.assert.calledWith(requestMock, sinon.match.has('method', 'GET'));
         sinon.assert.calledWith(requestMock, sinon.match.has('path', '/foo'));
         sinon.assert.calledWith(requestMock, sinon.match.has('headers',
             sinon.match.has('Content-Type', 'application/json')
