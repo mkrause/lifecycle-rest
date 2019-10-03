@@ -25,7 +25,6 @@ module.exports = {
         // 'transform-runtime', // Needed to support generators
         
         '@babel/proposal-class-properties',
-        '@babel/proposal-object-rest-spread',
         
         ['transform-builtin-extend', {
             // See: http://stackoverflow.com/questions/33870684/why-doesnt-instanceof-work
