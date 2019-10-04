@@ -1,6 +1,6 @@
 // @flow
 
-import match from '@mkrause/match';
+import match from 'case-match';
 import $msg from 'message-tag';
 
 import merge from '../util/merge.js';

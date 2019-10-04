@@ -37,7 +37,7 @@
     },
     "dependencies": {
         "uuid": "^3.3.3",
-        "@mkrause/match": "^1.2.2",
+        "case-match": "^2.0.0-beta.0",
         "moment": "^2.24.0",
         "immutable": "^4.0.0-rc.12",
         "uri-tag": "^1.1.0",
