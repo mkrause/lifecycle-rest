@@ -15,11 +15,10 @@
         "lib-esm/"
     ],
     "scripts": {
-        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --source-maps inline",
-        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --source-maps inline",
-        "test": "NODE_ENV=development BABEL_ENV=cjs mocha --require @babel/register --recursive tests",
-        "prepare": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs",
-        "prepublishOnly": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs"
+        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
+        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --extensions '.js,.ts' --source-maps inline",
+        "test": "NODE_ENV=development BABEL_ENV=cjs mocha --require ./src/register.js --recursive tests",
+        "prepublishOnly": "npm run build:esm && npm run build:cjs"
     },
     "devDependencies": {
         "@babel/core": "^7.6.2",
@@ -29,8 +28,10 @@
         "@babel/plugin-proposal-class-properties": "^7.5.5",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
         "@babel/preset-flow": "^7.0.0",
+        "@babel/preset-typescript": "^7.6.0",
         "flow-bin": "^0.109.0",
         "flow-copy-source": "^2.0.8",
+        "typescript": "^3.6.3",
         "mocha": "^6.2.1",
         "chai": "^4.2.0",
         "sinon": "^7.5.0"
@@ -45,6 +46,8 @@
         "object-merge-advanced": "^10.11.0",
         "axios": "^0.19.0",
         "@mkrause/lifecycle-loader": "^0.0.3",
-        "redux": "^4.0.4"
+        "redux": "^4.0.4",
+        "io-ts": "^2.0.1",
+        "fp-ts": "^2.1.0"
     }
 }

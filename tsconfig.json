@@ -1,0 +1,15 @@
+{
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts",
+    ],
+    "include": [
+        "src/**/*",
+    ],
+    "compilerOptions": {
+        "noEmit": true,
+        "lib": ["es2018"],
+        "allowJs": false,
+        "strict": true,
+    },
+}
