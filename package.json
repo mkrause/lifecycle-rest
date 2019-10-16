@@ -12,15 +12,17 @@
     "files": [
         "src/",
         "lib-cjs/",
-        "lib-esm/"
+        "lib-esm/",
+        "typings/"
     ],
     "scripts": {
         "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
         "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --extensions '.js,.ts' --source-maps inline",
-        "types": "tsc --project ./tsconfig.decl.json --declarationDir ./lib-cjs && tsc --project ./tsconfig.decl.json --declarationDir ./lib-esm",
+        "types": "tsc --project ./tsconfig.decl.json",
         "test": "npm run build:esm && NODE_ENV=development BABEL_ENV=cjs mocha --require=@babel/register --recursive tests",
         "prepublishOnly": "npm run build:esm && npm run build:cjs && npm run types"
     },
+    "types": "./typings/index.d.ts",
     "devDependencies": {
         "@babel/core": "^7.6.2",
         "@babel/register": "^7.6.2",
@@ -28,10 +30,7 @@
         "@babel/preset-env": "^7.6.2",
         "@babel/plugin-proposal-class-properties": "^7.5.5",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
-        "@babel/preset-flow": "^7.0.0",
         "@babel/preset-typescript": "^7.6.0",
-        "flow-bin": "^0.109.0",
-        "flow-copy-source": "^2.0.8",
         "typescript": "^3.6.3",
         "@types/node": "^12.7.12",
         "mocha": "^6.2.1",

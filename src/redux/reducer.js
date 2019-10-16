@@ -1,20 +1,15 @@
-// @flow
 
 import match from 'case-match';
 import $msg from 'message-tag';
 
 import merge from '../util/merge.js';
+import { isPlainObject } from '../util/ObjectUtil.js';
 
 
-type Step = string;
-type Path = Array<Step>;
+// type Step = string;
+// type Path = Array<Step>;
 
-const isPlainObject = obj => {
-    const proto = Object.getPrototypeOf(obj);
-    return proto === null || proto === Object.prototype;
-};
-
-const setIn = (state, path : Path, value) => {
+const setIn = (state, path /*: Path*/, value) => {
     if (path.length === 0) {
         return value;
     }

@@ -1,4 +1,3 @@
-// @flow
 
 import uuid from 'uuid';
 import merge from '../util/merge.js';

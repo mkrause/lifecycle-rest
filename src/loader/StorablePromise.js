@@ -1,3 +1,8 @@
+
+// TEMP
+export { LoadablePromise as default } from '@mkrause/lifecycle-loader';
+
+/*
 // @flow
 
 import { LoadablePromise } from '@mkrause/lifecycle-loader';
@@ -70,3 +75,4 @@ export default class StorablePromise extends LoadablePromise {
         return new Promise((resolve, reject) => this.then(resolve, reject));
     }
 }
+*/
