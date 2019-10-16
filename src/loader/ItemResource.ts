@@ -1,19 +1,19 @@
-// @flow
 
 import $msg from 'message-tag';
 
 import env from '../util/env.js';
-import merge from '../util/merge.js';
+//import merge from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
-import { status, Loadable } from '@mkrause/lifecycle-loader';
-import type { LoadableT } from '@mkrause/lifecycle-loader';
+import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
-import StorablePromise from './StorablePromise.js';
+import { Methods, Resources, Resource, ResourcePath, StorePath, URI, Context } from './Resource.js';
+//import StorablePromise from './StorablePromise.js';
 
 
+/*
 const itemDefaults = {
     store: [],
     uri: '',
@@ -130,5 +130,50 @@ const ItemResource = (Schema, itemSpec = {}) => {
         schema: Schema,
     });
 };
+
+export default ItemResource;
+*/
+
+
+type ResourceAny = {}; // FIXME
+
+export type ItemSchema = unknown;
+export type ItemResourceSpec<Schema extends ItemSchema> = {
+    schema ?: Schema,
+    path ?: ResourcePath,
+    store ?: StorePath,
+    uri ?: URI,
+    methods ?: {
+        get ?: (context : { spec : ItemResourceSpec<Schema> }, params : {}) => Promise<unknown>,
+        put ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
+        patch ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
+        delete ?: (context : { spec : ItemResourceSpec<Schema> }) => Promise<unknown>,
+        [method : string] : undefined | ((context : { spec : ItemResourceSpec<Schema> }, ...args : any[]) => unknown),
+    },
+    resources ?: {
+        [resource : string] : (context : Context) => ResourceAny, // Resource<any, any>,
+    },
+};
+
+
+type MethodsFromSpec<S extends ItemSchema, M extends Required<ItemResourceSpec<S>>['methods']> =
+    { [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
+type ResourcesFromSpec<S extends ItemSchema, R extends Required<ItemResourceSpec<S>>['resources']> =
+    { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
+
+type DefaultMethods = {
+    get : (params ?: {}) => Promise<unknown>,
+};
+
+export const ItemResource =
+    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(spec : Spec) =>
+    (context : Context) : Resource<
+        MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
+        ResourcesFromSpec<Schema, Spec['resources'] & {}>,
+        {}
+    > => {
+        const { path, store, uri } = context;
+        return null as any;
+    };
 
 export default ItemResource;

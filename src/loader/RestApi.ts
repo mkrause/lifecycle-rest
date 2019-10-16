@@ -1,9 +1,8 @@
-// @flow
 
 import env from '../util/env.js';
-import merge from '../util/merge.js';
+// import merge from '../util/merge.js';
 
-import { SimpleItem } from './Resource.js';
+import { Methods, Resources, Resource, URI, ResourcePath, StorePath, Agent, Context } from './Resource.js';
 import ItemResource from './ItemResource.js';
 import CollectionResource from './CollectionResource.js';
 
@@ -16,33 +15,16 @@ your API (an endpoint, essentially).
 The actual HTTP requests are delegated to an *agent* that you need to provide.
 */
 
-interface Agent {
-    head : Function,
-    get : Function,
-    post : Function,
-    put : Function,
-    patch : Function,
-    delete : Function,
-};
 
-export type Context = {
-    agent : Agent,
-    config : Object,
-    path : Array<mixed>,
-    store : Array<mixed>,
-    uri : string,
-};
-export type Resource = Context => mixed;
-
-const RestApi = (agent : Agent, _resource : Resource) => {
-    const resource = typeof _resource !== 'function' ? ItemResource(SimpleItem, _resource) : _resource;
+const RestApi = <R>(agent : Agent, resource : (context : Context) => R) : R => {
+    //const resource = typeof _resource !== 'function' ? ItemResource(SimpleItem, _resource) : _resource;
     
-    const config = {}; // In the future we may want to support additional API configuration
+    const options = {}; // In the future we may want to support additional API options
     
     // Current context while traversing through the resource hierarchy
     const context = {
         agent,
-        config,
+        options,
         path: [], // The current path in the API resource tree
         store: [],
         uri: '', // Note: no trailing slash (so empty string in case of empty URI)

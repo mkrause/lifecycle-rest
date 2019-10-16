@@ -1,5 +1,18 @@
-// @flow
 
+import $msg from 'message-tag';
+
+import env from '../util/env.js';
+//import merge from '../util/merge.js';
+import * as ObjectUtil from '../util/ObjectUtil.js';
+import $uri from 'uri-tag';
+import { concatUri } from '../util/uri.js';
+
+import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
+
+import { Methods, Resources, Resource, ResourcePathStep, ResourcePath, StorePath, URI, Context } from './Resource.js';
+//import StorablePromise from './StorablePromise.js';
+
+/*
 import env from '../util/env.js';
 import merge from '../util/merge.js';
 import uuid from 'uuid';
@@ -243,5 +256,52 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
     
     return Object.assign(getEntry, methods, customMethods, info);
 };
+
+export default CollectionResource;
+*/
+
+
+type ResourceAny = {}; // FIXME
+
+export type CollectionSchema = unknown;
+export type CollectionResourceSpec<Schema extends CollectionSchema> = {
+    schema ?: Schema,
+    path ?: ResourcePath,
+    store ?: StorePath,
+    uri ?: URI,
+    methods ?: {
+        get ?: (context : { spec : CollectionResourceSpec<Schema> }, params : {}) => Promise<unknown>,
+        put ?: (context : { spec : CollectionResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
+        delete ?: (context : { spec : CollectionResourceSpec<Schema> }) => Promise<unknown>,
+        [method : string] : undefined | ((context : { spec : CollectionResourceSpec<Schema> }, ...args : any[]) => unknown),
+    },
+    resources ?: {
+        [resource : string] : (context : Context) => ResourceAny, // Resource<any, any>,
+    },
+    entry : (context : Context) => ResourceAny,
+};
+
+
+type MethodsFromSpec<S extends CollectionSchema, M extends Required<CollectionResourceSpec<S>>['methods']> =
+    { [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
+type ResourcesFromSpec<S extends CollectionSchema, R extends Required<CollectionResourceSpec<S>>['resources']> =
+    { [key in keyof R] : R[key] extends (context : Context) => infer Res ? Res : never };
+type EntryFromSpec<S extends CollectionSchema, E extends Required<CollectionResourceSpec<S>>['entry']> =
+    E extends (context : Context) => infer R ? R : never;
+
+type DefaultMethods = {
+    get : (params ?: {}) => Promise<unknown>,
+};
+
+export const CollectionResource =
+    <Schema extends CollectionSchema, Spec extends CollectionResourceSpec<Schema>>(spec : Spec) =>
+    (context : Context) : Resource<
+        MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
+        ResourcesFromSpec<Schema, Spec['resources'] & {}>,
+        { (index : ResourcePathStep) : EntryFromSpec<Schema, Spec['entry']> }
+    > => {
+        const { path, store, uri } = context;
+        return null as any;
+    };
 
 export default CollectionResource;
