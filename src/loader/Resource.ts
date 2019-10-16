@@ -44,7 +44,7 @@ export type Methods = { [name : string] : (...args : unknown[]) => unknown };
 //export type Resources = { [name : string] : Resource<any, any> };
 export type Resources = {}; // FIXME
 export type Entry = {};
-export type Resource<M extends Methods, R extends Resources, E extends Entry> = MergeFlat<M, R> & E;
+export type Resource<M extends Methods = {}, R extends Resources = {}, E extends Entry = {}> = MergeFlat<M, R> & E;
 
 
 // Context

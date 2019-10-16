@@ -13,10 +13,11 @@ export const isPlainObject = (obj : {}) => {
 };
 
 
-export const mapValues = (obj, fn) => Object.entries(obj).reduce(
-    (acc, [key, value]) => {
-        acc[key] = fn(value, key);
-        return acc;
-    },
-    {}
-);
+export const mapValues = <O extends {}, Result>(obj : O, fn : (value : O[keyof O], key : keyof O) => Result)
+    : { [key in keyof O] : Result } => {
+        const result : { [key : string] : Result } = {};
+        for (const key in obj) {
+            result[key] = fn(obj[key], key);
+        }
+        return result as any;
+    };

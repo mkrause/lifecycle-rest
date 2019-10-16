@@ -261,11 +261,8 @@ export default CollectionResource;
 */
 
 
-type ResourceAny = {}; // FIXME
-
 export type CollectionSchema = unknown;
 export type CollectionResourceSpec<Schema extends CollectionSchema> = {
-    schema ?: Schema,
     path ?: ResourcePath,
     store ?: StorePath,
     uri ?: URI,
@@ -276,9 +273,9 @@ export type CollectionResourceSpec<Schema extends CollectionSchema> = {
         [method : string] : undefined | ((context : { spec : CollectionResourceSpec<Schema> }, ...args : any[]) => unknown),
     },
     resources ?: {
-        [resource : string] : (context : Context) => ResourceAny, // Resource<any, any>,
+        [resource : string] : (context : Context) => Resource,
     },
-    entry : (context : Context) => ResourceAny,
+    entry : (context : Context) => Resource,
 };
 
 
@@ -294,7 +291,7 @@ type DefaultMethods = {
 };
 
 export const CollectionResource =
-    <Schema extends CollectionSchema, Spec extends CollectionResourceSpec<Schema>>(spec : Spec) =>
+    <Schema extends CollectionSchema, Spec extends CollectionResourceSpec<Schema>>(schema : Schema, spec : Spec) =>
     (context : Context) : Resource<
         MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
         ResourcesFromSpec<Schema, Spec['resources'] & {}>,

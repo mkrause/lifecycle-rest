@@ -135,11 +135,8 @@ export default ItemResource;
 */
 
 
-type ResourceAny = {}; // FIXME
-
 export type ItemSchema = unknown;
 export type ItemResourceSpec<Schema extends ItemSchema> = {
-    schema ?: Schema,
     path ?: ResourcePath,
     store ?: StorePath,
     uri ?: URI,
@@ -151,7 +148,7 @@ export type ItemResourceSpec<Schema extends ItemSchema> = {
         [method : string] : undefined | ((context : { spec : ItemResourceSpec<Schema> }, ...args : any[]) => unknown),
     },
     resources ?: {
-        [resource : string] : (context : Context) => ResourceAny, // Resource<any, any>,
+        [resource : string] : (context : Context) => Resource,
     },
 };
 
@@ -166,7 +163,7 @@ type DefaultMethods = {
 };
 
 export const ItemResource =
-    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(spec : Spec) =>
+    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(schema : Schema, spec : Spec) =>
     (context : Context) : Resource<
         MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
         ResourcesFromSpec<Schema, Spec['resources'] & {}>,
