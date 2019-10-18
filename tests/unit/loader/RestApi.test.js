@@ -7,9 +7,9 @@ import $msg from 'message-tag';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../../src/agent.js';
-import StorablePromise from '../../../src/loader/StorablePromise.js';
-import RestApi from '../../../src/loader/RestApi.js';
+import createAgent from '../../../lib-esm/agent.js';
+import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
+import RestApi from '../../../lib-esm/loader/RestApi.js';
 
 
 describe('RestApi', () => {

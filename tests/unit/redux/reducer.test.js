@@ -6,7 +6,7 @@ import $msg from 'message-tag';
 
 import * as Redux from 'redux';
 
-import createLifecycleReducer from '../../../src/redux/reducer.js';
+import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 
 describe('redux reducer', () => {

@@ -7,10 +7,10 @@ import $msg from 'message-tag';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../../src/agent.js';
-import StorablePromise from '../../../src/loader/StorablePromise.js';
-import { SimpleItem } from '../../../src/loader/Resource.js';
-import CollectionResource from '../../../src/loader/CollectionResource.js';
+import createAgent from '../../../lib-esm/agent.js';
+import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
+import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
+import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
 
 
 describe('CollectionResource', () => {

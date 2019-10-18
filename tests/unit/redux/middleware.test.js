@@ -8,9 +8,9 @@ import $msg from 'message-tag';
 import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
-import createAgent from '../../../src/agent.js';
-import RestApi from '../../../src/loader/RestApi.js';
-import createLifecycleMiddleware from '../../../src/redux/middleware.js';
+import createAgent from '../../../lib-esm/agent.js';
+import RestApi from '../../../lib-esm/loader/RestApi.js';
+import createLifecycleMiddleware from '../../../lib-esm/redux/middleware.js';
 
 
 describe('redux middleware', () => {

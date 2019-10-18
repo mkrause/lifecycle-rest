@@ -5,15 +5,123 @@ import sinon from 'sinon';
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
+import * as t from 'io-ts';
+
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../../src/agent.js';
-import StorablePromise from '../../../src/loader/StorablePromise.js';
-import { SimpleItem } from '../../../src/loader/Resource.js';
-import ItemResource from '../../../src/loader/ItemResource.js';
+import createAgent from '../../../lib-esm/agent.js';
+// import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
+// import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
 
+import ItemResource from '../../../lib-esm/loader/ItemResource.js';
+
+
+// TEMP
+const SimpleItem = {
+    name: 'SimpleItem',
+    is(other) { return true; },
+    validate(instance, context) { return {}; },
+    decode(instance) { return {}; },
+    encode(instance) { return {}; },
+    //pipe() {},
+    //asDecoder() {},
+    //asEncoder() {},
+};
+
+const Identity = new t.Type('Identity', _ => true, t.success, t.identity);
 
 describe('ItemResource', () => {
+    const context = {
+        agent: createAgent({
+            adapter: async request => { throw new Error(`Not supported`); },
+        }),
+        options: {},
+        path: [],
+        store: [],
+        uri: '',
+    };
+    
+    it('should have sensible defaults', () => {
+        const api = ItemResource(Identity)(context);
+        
+        expect(api).to.have.nested.property('_spec.store').to.deep.equal([]);
+        expect(api).to.have.nested.property('_spec.uri').to.deep.equal('');
+    });
+    
+    it('should allow customization', () => {
+        const api = ItemResource(Identity, {
+            store: ['foo', 'bar'],
+            uri: 'x/y',
+        })(context);
+        
+        expect(api).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar']);
+        expect(api).to.have.nested.property('_spec.uri').to.equal('x/y');
+    });
+    
+    it('should allow definition of methods', () => {
+        const methodMock = sinon.stub().callsFake(({ context, agent, spec, schema }, name) => `Hello ${name}`);
+        
+        const api = ItemResource(Identity, {
+            store: ['foo', 'bar'],
+            uri: 'x/y',
+            methods: {
+                greet: methodMock,
+            },
+        })(context);
+        
+        expect(api).to.have.property('greet');
+        
+        const result = api.greet('Alice');
+        
+        expect(result).to.equal('Hello Alice');
+        
+        sinon.assert.calledOnce(methodMock);
+        sinon.assert.calledOn(methodMock, api._spec); // `this` should be the spec
+        sinon.assert.calledWith(methodMock, sinon.match.object, sinon.match('Alice'));
+        sinon.assert.calledWith(methodMock, sinon.match.has('context', sinon.match(context)));
+        sinon.assert.calledWith(methodMock, sinon.match.has('agent', sinon.match.same(context.agent)));
+        sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Identity)));
+        sinon.assert.calledWith(methodMock, sinon.match.has('spec', sinon.match({
+            store: ['foo', 'bar'],
+            uri: 'x/y',
+        })));
+    });
+    
+    it('should allow definition of subresources', () => {
+        const api = ItemResource(Identity, {
+            store: ['foo', 'bar'],
+            uri: 'x/y',
+            resources: {
+                baz: ItemResource(Identity),
+            },
+        })(context);
+        
+        expect(api).to.have.property('baz');
+        
+        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/baz');
+    });
+    
+    it('should use relative behavior by default for subresources', () => {
+        const api = ItemResource(Identity, {
+            store: ['foo', 'bar'],
+            uri: 'x/y',
+            resources: {
+                baz: ItemResource(Identity, {
+                    store: ['baz'],
+                    uri: 'z',
+                }),
+            },
+        })(context);
+        
+        expect(api).to.have.property('baz');
+        
+        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/z');
+    });
+    
+    
+    // Simple mock REST API endpoint
     const agentMock = createAgent({
         adapter: async request => {
             const { method, url, params } = request;
@@ -24,8 +132,8 @@ describe('ItemResource', () => {
                 };
                 
                 return Promise.resolve({ data: item });
-            } else if (method === 'get' && url === '/api/foo') {
-                return Promise.resolve({ data: { x: 42 } });
+            } else if (method === 'get' && url === '/api/greet') {
+                return Promise.resolve({ data: `Hello ${params.name}` });
             } else if (method === 'get' && url === '/api/user') {
                 const user = {
                     name: 'Alice',
@@ -59,82 +167,42 @@ describe('ItemResource', () => {
         },
     });
     
-    const context = {
+    const contextWithAgent = {
         agent: agentMock,
-        config: {},
+        options: {},
         path: [],
         store: [],
         uri: '',
     };
     
-    it('should have sensible defaults', () => {
-        const api = ItemResource(SimpleItem)(context);
-        
-        expect(api).to.have.nested.property('_spec.store').to.deep.equal([]);
-        expect(api).to.have.nested.property('_spec.uri').to.deep.equal('');
-    });
-    
-    it('should allow customization', () => {
-        const api = ItemResource(SimpleItem, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
-        })(context);
-        
-        expect(api).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar']);
-        expect(api).to.have.nested.property('_spec.uri').to.equal('x/y');
-    });
-    
-    it('should allow definition of subresources', () => {
-        const api = ItemResource(SimpleItem, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
-            resources: {
-                baz: ItemResource(SimpleItem),
-            },
-        })(context);
-        
-        expect(api).to.have.property('baz');
-        
-        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/baz');
-    });
-    
-    it('should use relative behavior by default for subresources', () => {
-        const api = ItemResource(SimpleItem, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
-            resources: {
-                baz: ItemResource(SimpleItem, {
-                    store: ['baz'],
-                    uri: 'z',
-                }),
-            },
-        })(context);
-        
-        expect(api).to.have.property('baz');
-        
-        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/z');
-    });
-    
-    it('should support default methods on SimpleItem', async () => {
-        const api = ItemResource(SimpleItem, {
+    it('should support default method `get`', async () => {
+        const api = ItemResource(Identity, {
             store: ['app'],
             uri: '/api',
             resources: {
-                foo: ItemResource(SimpleItem, {
-                    store: ['foo'],
-                    uri: 'foo',
+                greet: ItemResource(Identity, {
+                    store: ['greet'],
+                    uri: 'greet',
                 }),
             },
-        })(context);
+        })(contextWithAgent);
         
-        const result = await api.foo.get();
+        const result1 = await api.get();
+        expect(result1).to.deep.equal({ version: 42 });
+        expect(result1[status]).to.have.property('ready', true);
+        expect(result1[status]).to.have.property('loading', false);
+        expect(result1[status]).to.have.property('error', null);
         
-        expect(result).to.deep.equal({ x: 42 });
+        // Subresource
+        const result2 = await api.greet.get({ name: 'Alice' });
+        expect(String(result2)).to.equal('Hello Alice');
+        expect(result2[status]).to.have.property('ready', true);
+        expect(result2[status]).to.have.property('loading', false);
+        expect(result2[status]).to.have.property('error', null);
     });
     
     
+    /*
     class User {
         static instantiate() {
             return {
@@ -305,4 +373,5 @@ describe('ItemResource', () => {
             },
         });
     });
+    */
 });

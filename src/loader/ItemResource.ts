@@ -2,7 +2,7 @@
 import $msg from 'message-tag';
 
 import env from '../util/env.js';
-//import merge from '../util/merge.js';
+import merge from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
@@ -10,7 +10,7 @@ import { concatUri } from '../util/uri.js';
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
 import { Methods, Resources, Resource, ResourcePath, StorePath, URI, Context } from './Resource.js';
-//import StorablePromise from './StorablePromise.js';
+import StorablePromise from './StorablePromise.js';
 
 
 /*
@@ -135,7 +135,10 @@ export default ItemResource;
 */
 
 
-export type ItemSchema = unknown;
+export type ItemSchema = {
+    decode() : any,
+    encode() : any,
+};
 export type ItemResourceSpec<Schema extends ItemSchema> = {
     path ?: ResourcePath,
     store ?: StorePath,
@@ -162,15 +165,135 @@ type DefaultMethods = {
     get : (params ?: {}) => Promise<unknown>,
 };
 
+
+const itemDefaults = {
+    store: [],
+    uri: '',
+    resources: {},
+    methods: {
+        
+    },
+};
+
+const parse = response => {
+    if (response.status === 204) {
+        return null;
+    }
+    
+    return response.data;
+};
+
+const format = item => item;
+
+const report = (decodeResult : Either) => { // TEMP
+    if (decodeResult._tag === 'Right') {
+        return decodeResult.right;
+    } else {
+        throw decodeResult.left;
+    }
+};
+
 export const ItemResource =
-    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(schema : Schema, spec : Spec) =>
-    (context : Context) : Resource<
-        MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
-        ResourcesFromSpec<Schema, Spec['resources'] & {}>,
-        {}
-    > => {
-        const { path, store, uri } = context;
-        return null as any;
+    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(
+        schema : Schema, itemSpec : Spec = {} as Spec
+    ) => {
+        const makeResource = (context : Context) : Resource<
+            MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
+            ResourcesFromSpec<Schema, Spec['resources'] & {}>
+        > => {
+            const { agent, options } = context;
+            
+            const isRoot = context.path.length === 0;
+            const label = isRoot ? null : context.path[context.path.length - 1];
+            
+            // Parse the item specification
+            const itemDefaultsWithContext = merge(itemDefaults, {
+                store: isRoot ? [] : [label],
+                uri: isRoot ? '' : label,
+            });
+            const spec = merge(itemDefaultsWithContext, itemSpec);
+            
+            // Make relative
+            // TODO: allow the spec to override this and use absolute references instead
+            spec.store = [...context.store, ...spec.store];
+            spec.uri = concatUri([context.uri, spec.uri]);
+            
+            const customMethods = Object.entries(spec.methods)
+                .filter(([methodName, method]) => methodName[0] !== '_')
+                .map(([methodName, method]) => {
+                    const methodDecorated = (...args) => {
+                        const methodResult = method.call(spec, { context, agent, spec, schema }, ...args);
+                        
+                        if (methodResult instanceof StorablePromise) {
+                            return methodResult;
+                        } else if (methodResult instanceof Promise) {
+                            return StorablePromise.from(
+                                Loadable(null, { loading: true }),
+                                // { location: spec.store, operation: 'put' }, // TEMP
+                                methodResult
+                                    .then(response => {
+                                        const responseParsed = parse(response);
+                                        return Loadable(report(schema.decode(responseParsed)), { ready: true });
+                                    }),
+                            );
+                        } else {
+                            return methodResult;
+                        }
+                    };
+                    
+                    return [methodName, methodDecorated];
+                })
+                .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
+            
+            const methods = {
+                get(params = {}) {
+                    return StorablePromise.from(
+                        Loadable(null, { loading: true }),
+                        // { location: spec.store, operation: 'put' }, // TEMP
+                        agent.get(spec.uri, { params })
+                            .then(response => {
+                                return Loadable(report(schema.decode(parse(response))), { ready: true });
+                            }),
+                    );
+                },
+                
+                put(item, params = {}) {
+                    return StorablePromise.from(
+                        Loadable(null, { loading: true }),
+                        // { location: spec.store, operation: 'put' }, // TEMP
+                        agent.put(spec.uri, format(schema.encode(item)), { params })
+                            .then(response => {
+                                return Loadable(report(schema.decode(parse(response))), { ready: true });
+                            }),
+                    );
+                },
+                ...customMethods,
+            };
+            
+            // Subresources
+            const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
+                const resourceContext = {
+                    agent: context.agent,
+                    options: context.options,
+                    path: [...context.path, resourceKey],
+                    store: spec.store,
+                    uri: spec.uri,
+                };
+                return resource(resourceContext);
+            });
+            
+            const resource = {
+                ...methods,
+                ...resources,
+                _spec: spec, // Expose the spec
+            };
+            
+            return resource;
+        };
+        
+        return Object.assign(makeResource, {
+            schema, // Expose the schema
+        });
     };
 
 export default ItemResource;
