@@ -14,6 +14,10 @@ const optionsDefaults : AxiosRequestConfig = {
         //'Authorization': '...',
     },
     
+    validateStatus(status) {
+      return status >= 200 && status < 300;
+    },
+    
     // Whether to send browser cookies along with the request
     withCredentials: false,
 };

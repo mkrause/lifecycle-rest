@@ -7,6 +7,11 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
+import * as t from 'io-ts';
+import { PathReporter } from 'io-ts/lib/PathReporter.js';
+import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+import { either } from 'fp-ts';
+
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
 import { Methods, Resources, Resource, ResourcePath, StorePath, URI, Context } from './Resource.js';
@@ -171,7 +176,7 @@ const itemDefaults = {
     uri: '',
     resources: {},
     methods: {
-        
+        //
     },
 };
 
@@ -185,11 +190,23 @@ const parse = response => {
 
 const format = item => item;
 
+export class DecodeError extends Error {
+    readonly errors : ValidationErrors;
+    
+    constructor(reason : string, errors : ValidationErrors) {
+        super(reason);
+        this.errors = errors;
+    }
+}
+
 const report = (decodeResult : Either) => { // TEMP
     if (decodeResult._tag === 'Right') {
         return decodeResult.right;
     } else {
-        throw new Error('TODO'); //decodeResult.left;
+        const errors = decodeResult.left;
+        const report = PathReporter.report(errors);
+        const message = $msg`Failed to decode response:\n\n${report}`;
+        throw new DecodeError(message, errors);
     }
 };
 
@@ -262,7 +279,13 @@ export const ItemResource =
                     */
                 },
                 
-                put(item, params = {}) {
+                async put(instance, params = {}) {
+                    const instanceEncoded = schema.encode(instance);
+                    
+                    const response = await agent.put(spec.uri, instanceEncoded, { params });
+                    return report(schema.decode(parse(response)));
+                    
+                    /*
                     return StorablePromise.from(
                         Loadable(null, { loading: true }),
                         // { location: spec.store, operation: 'put' }, // TEMP
@@ -271,7 +294,27 @@ export const ItemResource =
                                 return Loadable(report(schema.decode(parse(response))), { ready: true });
                             }),
                     );
+                    */
                 },
+                
+                async patch(instance, params = {}) {
+                    // TODO: how to deal with partial data?
+                    const instanceEncoded = schema.encode(instance);
+                    
+                    const response = await agent.patch(spec.uri, instanceEncoded, { params });
+                    return report(schema.decode(parse(response)));
+                },
+                
+                async delete(instanceEncoded, params = {}) {
+                    const response = await agent.delete(spec.uri, { params });
+                    return response.data;
+                },
+                
+                async post(body, params = {}) {
+                    const response = await agent.post(spec.uri, { params });
+                    return response.data;
+                },
+                
                 ...customMethods,
             };
             

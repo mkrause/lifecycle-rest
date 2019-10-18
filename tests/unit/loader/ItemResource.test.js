@@ -1,5 +1,6 @@
 
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 
 import $uri from 'uri-tag';
@@ -12,23 +13,13 @@ import { status, Loadable } from '@mkrause/lifecycle-loader';
 import createAgent from '../../../lib-esm/agent.js';
 // import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
 // import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
+import { Identity } from '../../../lib-esm/schema/Schema.js';
+import agentMock from '../../resources/agent_mock.js';
 
-import ItemResource from '../../../lib-esm/loader/ItemResource.js';
+import ItemResource, { DecodeError } from '../../../lib-esm/loader/ItemResource.js';
 
 
-// TEMP
-const SimpleItem = {
-    name: 'SimpleItem',
-    is(other) { return true; },
-    validate(instance, context) { return {}; },
-    decode(instance) { return {}; },
-    encode(instance) { return {}; },
-    //pipe() {},
-    //asDecoder() {},
-    //asEncoder() {},
-};
-
-const Identity = new t.Type('Identity', _ => true, t.success, t.identity);
+chai.use(chaiAsPromised);
 
 describe('ItemResource', () => {
     const context = {
@@ -121,57 +112,6 @@ describe('ItemResource', () => {
     });
     
     
-    // Simple mock REST API endpoint
-    const agentMock = createAgent({
-        adapter: async request => {
-            const { method, url, params } = request;
-            
-            if (method === 'get' && url === '/api') {
-                const item = {
-                    version: 42,
-                };
-                
-                // Simulate a bug in the response
-                if (params.bug === 'true') {
-                    item.version = '42';
-                }
-                
-                return Promise.resolve({ data: item });
-            } else if (method === 'get' && url === '/api/greet') {
-                return Promise.resolve({ data: `Hello ${params.name}` });
-            } else if (method === 'get' && url === '/api/user') {
-                const user = {
-                    name: 'Alice',
-                };
-                
-                return Promise.resolve({ data: user });
-            } else if (method === 'get' && url === '/api/user/query') {
-                const user = {
-                    name: 'Alice',
-                    profile: 'Lorem ipsum...',
-                };
-                
-                const response = {
-                    metadata: { profile_length: 1000 },
-                    item: user,
-                };
-                
-                return Promise.resolve({ data: response });
-            } else if (method === 'put' && url === '/api/user') {
-                const userRequest = JSON.parse(request.data);
-                
-                const user = {
-                    ...userRequest,
-                    user_id: 42, // Simulate create response with newly added ID
-                };
-                
-                return Promise.resolve({ data: user });
-            } else {
-                throw new Error($msg`Unknown route ${method} ${url}`);
-            }
-        },
-    });
-    
     const contextWithAgent = {
         agent: agentMock,
         options: {},
@@ -180,8 +120,19 @@ describe('ItemResource', () => {
         uri: '',
     };
     
+    const apiStandard = ItemResource(Identity, {
+        uri: '/api',
+        resources: {
+            users: ItemResource(Identity, {
+                resources: {
+                    alice: ItemResource(Identity),
+                },
+            }),
+        },
+    })(contextWithAgent);
+    
     describe('method `get`', () => {
-        it('should support default method `get`', async () => {
+        it('should support as default method', async () => {
             const api = ItemResource(Identity, {
                 uri: '/api',
                 resources: {
@@ -200,14 +151,12 @@ describe('ItemResource', () => {
         });
         
         it('should decode the response using the given schema', async () => {
-            const isMock = sinon.stub();
-            const decodeMock = sinon.stub();
-            const encodeMock = sinon.stub();
+            const mockDecode = sinon.stub();
             
             const ApiVersionSchema = new t.Type(
                 'ApiVersionSchema',
-                isMock.callsFake(instance => Object.prototype.hasOwnProperty.call(instance, '$test')),
-                decodeMock.callsFake((instanceEncoded, context) => {
+                instance => Object.prototype.hasOwnProperty.call(instance, '$test'),
+                mockDecode.callsFake((instanceEncoded, context) => {
                     
                     if (typeof instanceEncoded !== 'object' || instanceEncoded === null) {
                         return t.failure(instanceEncoded, context, 'Expected an object');
@@ -219,17 +168,67 @@ describe('ItemResource', () => {
                         return t.success({ $test: instanceEncoded });
                     }
                 }),
-                encodeMock.callsFake(instance => instance.$test),
+                instance => instance.$test,
             );
             
             const api = ItemResource(ApiVersionSchema, {
                 uri: '/api',
             })(contextWithAgent);
             
+            // Test successful decode
             const result1 = await api.get();
             expect(result1).to.deep.equal({ $test: { version: 42 } });
             
-            // expect(async () => await api.get({ bug: 'true' })).to.throw(Error);
+            sinon.assert.calledOnce(mockDecode);
+            sinon.assert.calledWith(mockDecode.firstCall, { version: 42 });
+            
+            
+            // Test failed decode
+            await expect(api.get({ bug: 'true' })).to.be.rejectedWith(DecodeError, /failed to decode/i);
+            
+            sinon.assert.calledTwice(mockDecode);
+            sinon.assert.calledWith(mockDecode.secondCall, { version: '42' });
+        });
+    });
+    
+    describe('method `put`', () => {
+        it('should support as default method', async () => {
+            const userUpdated = await apiStandard.users['alice'].put({
+                name: 'Alice!',
+            });
+            
+            expect(userUpdated).to.deep.equal({
+                name: 'Alice!',
+            });
+        });
+    });
+    
+    describe('method `patch`', () => {
+        it('should support as default method', async () => {
+            const userUpdated = await apiStandard.users['alice'].patch({
+                name: 'Alice!',
+            });
+            
+            expect(userUpdated).to.deep.equal({
+                name: 'Alice!',
+            });
+        });
+    });
+    
+    describe('method `delete`', () => {
+        it('should support as default method', async () => {
+            const result = await apiStandard.users['alice'].delete();
+            
+            // TODO: check that the status code is 204
+            expect(result).to.equal(undefined);
+        });
+    });
+    
+    describe('method `post`', () => {
+        it('should support as default method', async () => {
+            const promise = apiStandard.users['alice'].post();
+            
+            await expect(promise).to.be.rejectedWith(Error, /request failed with status code 409/i);
         });
     });
     
