@@ -189,7 +189,7 @@ const report = (decodeResult : Either) => { // TEMP
     if (decodeResult._tag === 'Right') {
         return decodeResult.right;
     } else {
-        throw decodeResult.left;
+        throw new Error('TODO'); //decodeResult.left;
     }
 };
 
@@ -246,7 +246,11 @@ export const ItemResource =
                 .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
             
             const methods = {
-                get(params = {}) {
+                async get(params = {}) {
+                    const response = await agent.get(spec.uri, { params });
+                    return report(schema.decode(parse(response)));
+                    
+                    /*
                     return StorablePromise.from(
                         Loadable(null, { loading: true }),
                         // { location: spec.store, operation: 'put' }, // TEMP
@@ -255,6 +259,7 @@ export const ItemResource =
                                 return Loadable(report(schema.decode(parse(response))), { ready: true });
                             }),
                     );
+                    */
                 },
                 
                 put(item, params = {}) {

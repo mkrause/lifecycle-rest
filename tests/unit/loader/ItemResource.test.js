@@ -131,6 +131,11 @@ describe('ItemResource', () => {
                     version: 42,
                 };
                 
+                // Simulate a bug in the response
+                if (params.bug === 'true') {
+                    item.version = '42';
+                }
+                
                 return Promise.resolve({ data: item });
             } else if (method === 'get' && url === '/api/greet') {
                 return Promise.resolve({ data: `Hello ${params.name}` });
@@ -175,30 +180,57 @@ describe('ItemResource', () => {
         uri: '',
     };
     
-    it('should support default method `get`', async () => {
-        const api = ItemResource(Identity, {
-            store: ['app'],
-            uri: '/api',
-            resources: {
-                greet: ItemResource(Identity, {
-                    store: ['greet'],
-                    uri: 'greet',
+    describe('method `get`', () => {
+        it('should support default method `get`', async () => {
+            const api = ItemResource(Identity, {
+                uri: '/api',
+                resources: {
+                    greet: ItemResource(Identity, {
+                        uri: 'greet',
+                    }),
+                },
+            })(contextWithAgent);
+            
+            const result1 = await api.get();
+            expect(result1).to.deep.equal({ version: 42 });
+            
+            // Should be able to pass query parameters
+            const result2 = await api.greet.get({ name: 'Alice' });
+            expect(result2).to.equal('Hello Alice');
+        });
+        
+        it('should decode the response using the given schema', async () => {
+            const isMock = sinon.stub();
+            const decodeMock = sinon.stub();
+            const encodeMock = sinon.stub();
+            
+            const ApiVersionSchema = new t.Type(
+                'ApiVersionSchema',
+                isMock.callsFake(instance => Object.prototype.hasOwnProperty.call(instance, '$test')),
+                decodeMock.callsFake((instanceEncoded, context) => {
+                    
+                    if (typeof instanceEncoded !== 'object' || instanceEncoded === null) {
+                        return t.failure(instanceEncoded, context, 'Expected an object');
+                    } else if (!Object.prototype.hasOwnProperty.call(instanceEncoded, 'version')) {
+                        return t.failure(instanceEncoded, context, 'Missing property `version`');
+                    } else if (typeof instanceEncoded.version !== 'number') {
+                        return t.failure(instanceEncoded, context, 'Expected `version` to be a number');
+                    } else {
+                        return t.success({ $test: instanceEncoded });
+                    }
                 }),
-            },
-        })(contextWithAgent);
-        
-        const result1 = await api.get();
-        expect(result1).to.deep.equal({ version: 42 });
-        expect(result1[status]).to.have.property('ready', true);
-        expect(result1[status]).to.have.property('loading', false);
-        expect(result1[status]).to.have.property('error', null);
-        
-        // Subresource
-        const result2 = await api.greet.get({ name: 'Alice' });
-        expect(String(result2)).to.equal('Hello Alice');
-        expect(result2[status]).to.have.property('ready', true);
-        expect(result2[status]).to.have.property('loading', false);
-        expect(result2[status]).to.have.property('error', null);
+                encodeMock.callsFake(instance => instance.$test),
+            );
+            
+            const api = ItemResource(ApiVersionSchema, {
+                uri: '/api',
+            })(contextWithAgent);
+            
+            const result1 = await api.get();
+            expect(result1).to.deep.equal({ $test: { version: 42 } });
+            
+            // expect(async () => await api.get({ bug: 'true' })).to.throw(Error);
+        });
     });
     
     
