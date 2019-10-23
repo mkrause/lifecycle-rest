@@ -120,118 +120,176 @@ describe('ItemResource', () => {
         uri: '',
     };
     
-    const apiStandard = ItemResource(Identity, {
-        uri: '/api',
-        resources: {
-            users: ItemResource(Identity, {
-                resources: {
-                    alice: ItemResource(Identity),
-                },
-            }),
-        },
-    })(contextWithAgent);
-    
-    describe('method `get`', () => {
-        it('should support as default method', async () => {
-            const api = ItemResource(Identity, {
-                uri: '/api',
-                resources: {
-                    greet: ItemResource(Identity, {
-                        uri: 'greet',
-                    }),
-                },
-            })(contextWithAgent);
-            
-            const result1 = await api.get();
-            expect(result1).to.deep.equal({ version: 42 });
-            
-            // Should be able to pass query parameters
-            const result2 = await api.greet.get({ name: 'Alice' });
-            expect(result2).to.equal('Hello Alice');
+    describe('without schema', () => {
+        // Test
+        
+        const apiStandard = ItemResource(Identity, {
+            uri: '/api',
+            resources: {
+                users: ItemResource(Identity, {
+                    resources: {
+                        alice: ItemResource(Identity),
+                    },
+                }),
+            },
+        })(contextWithAgent);
+        
+        describe('method `get`', () => {
+            it('should be supported as default method', async () => {
+                const api = ItemResource(Identity, {
+                    uri: '/api',
+                    resources: {
+                        greet: ItemResource(Identity, {
+                            uri: 'greet',
+                        }),
+                    },
+                })(contextWithAgent);
+                
+                const result1 = await api.get();
+                expect(result1).to.deep.equal({ version: 42 });
+                
+                // Should be able to pass query parameters
+                const result2 = await api.greet.get({ name: 'Alice' });
+                expect(result2).to.equal('Hello Alice');
+            });
         });
         
-        it('should decode the response using the given schema', async () => {
-            const mockDecode = sinon.stub();
-            
-            const ApiVersionSchema = new t.Type(
-                'ApiVersionSchema',
-                instance => Object.prototype.hasOwnProperty.call(instance, '$test'),
-                mockDecode.callsFake((instanceEncoded, context) => {
-                    
-                    if (typeof instanceEncoded !== 'object' || instanceEncoded === null) {
-                        return t.failure(instanceEncoded, context, 'Expected an object');
-                    } else if (!Object.prototype.hasOwnProperty.call(instanceEncoded, 'version')) {
-                        return t.failure(instanceEncoded, context, 'Missing property `version`');
-                    } else if (typeof instanceEncoded.version !== 'number') {
-                        return t.failure(instanceEncoded, context, 'Expected `version` to be a number');
-                    } else {
-                        return t.success({ $test: instanceEncoded });
-                    }
+        describe('method `put`', () => {
+            it('should be supported as default method', async () => {
+                const userUpdated = await apiStandard.users['alice'].put({
+                    name: 'Alice!',
+                });
+                
+                expect(userUpdated).to.deep.equal({
+                    name: 'Alice!',
+                });
+            });
+        });
+        
+        describe('method `patch`', () => {
+            it('should be supported as default method', async () => {
+                const userUpdated = await apiStandard.users['alice'].patch({
+                    name: 'Alice!',
+                });
+                
+                expect(userUpdated).to.deep.equal({
+                    name: 'Alice!',
+                });
+            });
+        });
+        
+        describe('method `delete`', () => {
+            it('should be supported as default method', async () => {
+                const result = await apiStandard.users['alice'].delete();
+                
+                expect(result).to.equal(undefined);
+            });
+        });
+        
+        describe('method `post`', () => {
+            it('should be supported as default method', async () => {
+                const promise = apiStandard.users['alice'].post();
+                
+                await expect(promise).to.be.rejectedWith(Error, /request failed with status code 409/i);
+            });
+        });
+    });
+    
+    describe('with schema', () => {
+        const ApiVersionSchema = new t.Type(
+            'ApiVersion',
+            instance => Object.prototype.hasOwnProperty.call(instance, '$test'),
+            (instanceEncoded, context) => {
+                if (typeof instanceEncoded !== 'object' || instanceEncoded === null) {
+                    return t.failure(instanceEncoded, context, 'Expected an object');
+                } else if (!Object.prototype.hasOwnProperty.call(instanceEncoded, 'version')) {
+                    return t.failure(instanceEncoded, context, 'Missing property `version`');
+                } else if (typeof instanceEncoded.version !== 'number') {
+                    return t.failure(instanceEncoded, context, 'Expected `version` to be a number');
+                } else {
+                    return t.success({ $test: instanceEncoded });
+                }
+            },
+            instance => instance.$test,
+        );
+        
+        const UserSchema = t.type({
+            name: t.string,
+        });
+        
+        const UserKey = t.string;
+        const UsersListSchema = t.array(t.intersection([t.type({ id: UserKey }), UserSchema]));
+        const UsersMapSchema = t.record(t.string, UserSchema);
+        
+        const api = ItemResource(ApiVersionSchema, {
+            uri: '/api',
+            resources: {
+                users: ItemResource(UsersMapSchema, {
+                    resources: {
+                        alice: ItemResource(UserSchema),
+                    },
                 }),
-                instance => instance.$test,
-            );
-            
-            const api = ItemResource(ApiVersionSchema, {
-                uri: '/api',
-            })(contextWithAgent);
-            
-            // Test successful decode
-            const result1 = await api.get();
-            expect(result1).to.deep.equal({ $test: { version: 42 } });
-            
-            sinon.assert.calledOnce(mockDecode);
-            sinon.assert.calledWith(mockDecode.firstCall, { version: 42 });
-            
-            
-            // Test failed decode
-            await expect(api.get({ bug: 'true' })).to.be.rejectedWith(DecodeError, /failed to decode/i);
-            
-            sinon.assert.calledTwice(mockDecode);
-            sinon.assert.calledWith(mockDecode.secondCall, { version: '42' });
-        });
-    });
-    
-    describe('method `put`', () => {
-        it('should support as default method', async () => {
-            const userUpdated = await apiStandard.users['alice'].put({
-                name: 'Alice!',
+                usersAsList: ItemResource(UsersListSchema, {
+                    uri: 'users',
+                    resources: {
+                        alice: ItemResource(UserSchema),
+                    },
+                }),
+            },
+        })(contextWithAgent);
+        
+        describe('method `get`', () => {
+            it('should decode the response using the given schema (schema: custom)', async () => {
+                // Test successful decode
+                const result1 = await api.get();
+                expect(result1).to.deep.equal({ $test: { version: 42 } });
+                
+                // Test failed decode
+                await expect(api.get({ bug: 'number-as-string' }))
+                    .to.be.rejectedWith(DecodeError, /failed to decode/i);
+                
+                try {
+                    await api.get({ bug: 'number-as-string' });
+                    assert(false);
+                } catch (e) {
+                    expect(e).to.be.instanceOf(DecodeError);
+                    // TODO: check the error report
+                }
             });
             
-            expect(userUpdated).to.deep.equal({
-                name: 'Alice!',
+            it('should decode the response using the given schema (schema: item)', async () => {
+                // Test successful decode
+                const result1 = await api.users['alice'].get();
+                expect(result1).to.deep.equal({ name: 'Alice' });
+                
+                // Test failed decode
+                await expect(api.users['alice'].get({ bug: 'wrong-type' }))
+                    .to.be.rejectedWith(DecodeError, /failed to decode/i);
+                // await expect(api.users['alice'].get({ bug: 'extra-properties' }))
+                //     .to.be.rejectedWith(DecodeError, /failed to decode/i);
+            });
+            
+            it('should decode the response using the given schema (schema: collection)', async () => {
+                // Test successful decode
+                const result1 = await api.users.get();
+                expect(result1).to.deep.equal({
+                    'alice': { name: 'Alice' },
+                    'bob': { name: 'Bob' },
+                    'john': { name: 'John' },
+                });
+                
+                const result2 = await api.usersAsList.get({ format: 'list' });
+                expect(result2).to.deep.equal([
+                    { id: 'alice', name: 'Alice' },
+                    { id: 'bob', name: 'Bob' },
+                    { id: 'john', name: 'John' },
+                ]);
+                
+                // Test failed decode
+                // TODO
             });
         });
     });
-    
-    describe('method `patch`', () => {
-        it('should support as default method', async () => {
-            const userUpdated = await apiStandard.users['alice'].patch({
-                name: 'Alice!',
-            });
-            
-            expect(userUpdated).to.deep.equal({
-                name: 'Alice!',
-            });
-        });
-    });
-    
-    describe('method `delete`', () => {
-        it('should support as default method', async () => {
-            const result = await apiStandard.users['alice'].delete();
-            
-            // TODO: check that the status code is 204
-            expect(result).to.equal(undefined);
-        });
-    });
-    
-    describe('method `post`', () => {
-        it('should support as default method', async () => {
-            const promise = apiStandard.users['alice'].post();
-            
-            await expect(promise).to.be.rejectedWith(Error, /request failed with status code 409/i);
-        });
-    });
-    
     
     /*
     class User {

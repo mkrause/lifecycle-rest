@@ -210,6 +210,14 @@ const report = (decodeResult : Either) => { // TEMP
     }
 };
 
+const partial = (schema : t.Type) => {
+    if (schema.props) {
+        return t.partial(schema.props);
+    } else {
+        return schema;
+    }
+};
+
 export const ItemResource =
     <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(
         schema : Schema, itemSpec : Spec = {} as Spec
@@ -221,6 +229,7 @@ export const ItemResource =
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
+            
             const label = isRoot ? null : context.path[context.path.length - 1];
             
             // Parse the item specification
@@ -263,6 +272,18 @@ export const ItemResource =
                 .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
             
             const methods = {
+                /*
+                async head(params = {}) {
+                    const response = await agent.head(spec.uri, { params });
+                    return response;
+                },
+                
+                async options(params = {}) {
+                    const response = await agent.options(spec.options, { params });
+                    return response;
+                },
+                */
+                
                 async get(params = {}) {
                     const response = await agent.get(spec.uri, { params });
                     return report(schema.decode(parse(response)));
@@ -298,7 +319,8 @@ export const ItemResource =
                 },
                 
                 async patch(instance, params = {}) {
-                    // TODO: how to deal with partial data?
+                    const schemaPartial = partial(schema);
+                    
                     const instanceEncoded = schema.encode(instance);
                     
                     const response = await agent.patch(spec.uri, instanceEncoded, { params });
