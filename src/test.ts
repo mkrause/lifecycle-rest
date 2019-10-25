@@ -1,10 +1,10 @@
 
 import axios from 'axios';
-import * as t from 'io-ts';
-import Fp from 'fp-ts';
+// import * as t from 'io-ts';
+// import Fp, { either } from 'fp-ts';
 import { Loadable } from '@mkrause/lifecycle-loader';
 
-import RestApi from './loader/RestApi.js';
+//import RestApi from './loader/RestApi.js';
 
 
 //const x : never = Loadable({ x: 42 });
@@ -45,6 +45,7 @@ const test3 = api.config.getConfig();
 const test4 = api.users('user1').getName();
 */
 
+/*
 console.log('hello');
 
 
@@ -60,3 +61,38 @@ const string = new t.Type<string, string, unknown>(
 const User = t.type({
     name: t.string,
 });
+*/
+
+
+
+
+
+
+
+
+require('util').inspect.defaultOptions.depth = Infinity;
+
+import { either } from 'fp-ts';
+import * as t from 'io-ts';
+
+type User = { name : string, score : number };
+
+const UserDecoder : t.Decoder<unknown, User> = {
+    name: 'UserDecoder',
+    validate(input : unknown, context : t.Context) : t.Validation<User> {
+        // return either.right({ name: 'John', score: 42 });
+        return either.left([
+            { value: 'x', context, message: 'foo' },
+        ]);
+    },
+    decode(input : unknown) : t.Validation<User> {
+        return this.validate(input, [{ key: '', type: UserDecoder, actual: input }]);
+    },
+};
+
+const john = UserDecoder.decode({ name: 'John' });
+
+console.log(t.string.decode(42));
+console.log('result', john);
+
+console.log(t.type({ x: t.type({ y: t.string }), a: t.string }).decode({ x: { y: 5 }, a: 7 }));

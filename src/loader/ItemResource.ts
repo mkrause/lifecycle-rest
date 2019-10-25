@@ -171,14 +171,7 @@ type DefaultMethods = {
 };
 
 
-const itemDefaults = {
-    store: [],
-    uri: '',
-    resources: {},
-    methods: {
-        //
-    },
-};
+
 
 const parse = response => {
     if (response.status === 204) {
@@ -204,8 +197,12 @@ const report = (decodeResult : Either) => { // TEMP
         return decodeResult.right;
     } else {
         const errors = decodeResult.left;
-        const report = PathReporter.report(errors);
-        const message = $msg`Failed to decode response:\n\n${report}`;
+        const report = PathReporter.report(decodeResult);
+        
+        let message = `Failed to decode response:\n` + report.map(error =>
+            `\n- ${error}`
+        );
+        
         throw new DecodeError(message, errors);
     }
 };
@@ -216,6 +213,95 @@ const partial = (schema : t.Type) => {
     } else {
         return schema;
     }
+};
+
+export const contextKey = Symbol('resource.context');
+
+const itemDefaults = {
+    store: [],
+    uri: '',
+    resources: {},
+    methods: {
+        /*
+        async head(params = {}) {
+            const response = await agent.head(spec.uri, { params });
+            return response;
+        },
+        
+        async options(params = {}) {
+            const response = await agent.options(spec.options, { params });
+            return response;
+        },
+        */
+        
+        async _get(params = {}) {
+            const { agent, spec, schema } = this[contextKey];
+            
+            const response = await agent.get(spec.uri, { params });
+            return report(schema.decode(parse(response)));
+            
+            /*
+            return StorablePromise.from(
+                Loadable(null, { loading: true }),
+                // { location: spec.store, operation: 'put' }, // TEMP
+                agent.get(spec.uri, { params })
+                    .then(response => {
+                        return Loadable(report(schema.decode(parse(response))), { ready: true });
+                    }),
+            );
+            */
+        },
+        get(...args) { return this._get(...args); },
+        
+        async _put(instance, params = {}) {
+            const { agent, spec, schema } = this[contextKey];
+            
+            const instanceEncoded = schema.encode(instance);
+            
+            const response = await agent.put(spec.uri, instanceEncoded, { params });
+            return report(schema.decode(parse(response)));
+            
+            /*
+            return StorablePromise.from(
+                Loadable(null, { loading: true }),
+                // { location: spec.store, operation: 'put' }, // TEMP
+                agent.put(spec.uri, format(schema.encode(item)), { params })
+                    .then(response => {
+                        return Loadable(report(schema.decode(parse(response))), { ready: true });
+                    }),
+            );
+            */
+        },
+        put(...args) { return this._put(...args); },
+        
+        async _patch(instance, params = {}) {
+            const { agent, spec, schema } = this[contextKey];
+            
+            const schemaPartial = partial(schema);
+            
+            const instanceEncoded = schema.encode(instance);
+            
+            const response = await agent.patch(spec.uri, instanceEncoded, { params });
+            return report(schema.decode(parse(response)));
+        },
+        patch(...args) { return this._patch(...args); },
+        
+        async _delete(instanceEncoded, params = {}) {
+            const { agent, spec, schema } = this[contextKey];
+            
+            const response = await agent.delete(spec.uri, { params });
+            return response.data;
+        },
+        delete(...args) { return this._delete(...args); },
+        
+        async _post(body, params = {}) {
+            const { agent, spec, schema } = this[contextKey];
+            
+            const response = await agent.post(spec.uri, { params });
+            return response.data;
+        },
+        post(...args) { return this._post(...args); },
+    },
 };
 
 export const ItemResource =
@@ -229,7 +315,6 @@ export const ItemResource =
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
-            
             const label = isRoot ? null : context.path[context.path.length - 1];
             
             // Parse the item specification
@@ -244,103 +329,20 @@ export const ItemResource =
             spec.store = [...context.store, ...spec.store];
             spec.uri = concatUri([context.uri, spec.uri]);
             
-            const customMethods = Object.entries(spec.methods)
-                .filter(([methodName, method]) => methodName[0] !== '_')
-                .map(([methodName, method]) => {
-                    const methodDecorated = (...args) => {
-                        const methodResult = method.call(spec, { context, agent, spec, schema }, ...args);
-                        
-                        if (methodResult instanceof StorablePromise) {
-                            return methodResult;
-                        } else if (methodResult instanceof Promise) {
-                            return StorablePromise.from(
-                                Loadable(null, { loading: true }),
-                                // { location: spec.store, operation: 'put' }, // TEMP
-                                methodResult
-                                    .then(response => {
-                                        const responseParsed = parse(response);
-                                        return Loadable(report(schema.decode(responseParsed)), { ready: true });
-                                    }),
-                            );
-                        } else {
-                            return methodResult;
-                        }
-                    };
-                    
-                    return [methodName, methodDecorated];
-                })
-                .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
             
-            const methods = {
-                /*
-                async head(params = {}) {
-                    const response = await agent.head(spec.uri, { params });
-                    return response;
-                },
+            // Get methods
+            const methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
+                const result = method.call(this, ...args);
                 
-                async options(params = {}) {
-                    const response = await agent.options(spec.options, { params });
-                    return response;
-                },
-                */
+                if (result instanceof Promise) {
+                    // @ts-ignore
+                    result.storable = { location: spec.store, operation: 'put' };
+                }
                 
-                async get(params = {}) {
-                    const response = await agent.get(spec.uri, { params });
-                    return report(schema.decode(parse(response)));
-                    
-                    /*
-                    return StorablePromise.from(
-                        Loadable(null, { loading: true }),
-                        // { location: spec.store, operation: 'put' }, // TEMP
-                        agent.get(spec.uri, { params })
-                            .then(response => {
-                                return Loadable(report(schema.decode(parse(response))), { ready: true });
-                            }),
-                    );
-                    */
-                },
-                
-                async put(instance, params = {}) {
-                    const instanceEncoded = schema.encode(instance);
-                    
-                    const response = await agent.put(spec.uri, instanceEncoded, { params });
-                    return report(schema.decode(parse(response)));
-                    
-                    /*
-                    return StorablePromise.from(
-                        Loadable(null, { loading: true }),
-                        // { location: spec.store, operation: 'put' }, // TEMP
-                        agent.put(spec.uri, format(schema.encode(item)), { params })
-                            .then(response => {
-                                return Loadable(report(schema.decode(parse(response))), { ready: true });
-                            }),
-                    );
-                    */
-                },
-                
-                async patch(instance, params = {}) {
-                    const schemaPartial = partial(schema);
-                    
-                    const instanceEncoded = schema.encode(instance);
-                    
-                    const response = await agent.patch(spec.uri, instanceEncoded, { params });
-                    return report(schema.decode(parse(response)));
-                },
-                
-                async delete(instanceEncoded, params = {}) {
-                    const response = await agent.delete(spec.uri, { params });
-                    return response.data;
-                },
-                
-                async post(body, params = {}) {
-                    const response = await agent.post(spec.uri, { params });
-                    return response.data;
-                },
-                
-                ...customMethods,
-            };
+                return result;
+            });
             
-            // Subresources
+            // Get subresources
             const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
                 const resourceContext = {
                     agent: context.agent,
@@ -355,7 +357,11 @@ export const ItemResource =
             const resource = {
                 ...methods,
                 ...resources,
-                _spec: spec, // Expose the spec
+                [contextKey]: {
+                    agent,
+                    spec,
+                    schema,
+                },
             };
             
             return resource;

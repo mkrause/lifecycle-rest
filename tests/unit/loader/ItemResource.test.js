@@ -1,6 +1,7 @@
 
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import chaiMatchPattern from 'chai-match-pattern';
 import sinon from 'sinon';
 
 import $uri from 'uri-tag';
@@ -16,10 +17,13 @@ import createAgent from '../../../lib-esm/agent.js';
 import { Identity } from '../../../lib-esm/schema/Schema.js';
 import agentMock from '../../resources/agent_mock.js';
 
-import ItemResource, { DecodeError } from '../../../lib-esm/loader/ItemResource.js';
+import ItemResource, { DecodeError, contextKey } from '../../../lib-esm/loader/ItemResource.js';
 
+
+require('util').inspect.defaultOptions.depth = Infinity;
 
 chai.use(chaiAsPromised);
+chai.use(chaiMatchPattern);
 
 describe('ItemResource', () => {
     const context = {
@@ -35,8 +39,8 @@ describe('ItemResource', () => {
     it('should have sensible defaults', () => {
         const api = ItemResource(Identity)(context);
         
-        expect(api).to.have.nested.property('_spec.store').to.deep.equal([]);
-        expect(api).to.have.nested.property('_spec.uri').to.deep.equal('');
+        expect(api).property(contextKey).nested.property('spec.store').to.deep.equal([]);
+        expect(api).property(contextKey).nested.property('spec.uri').to.deep.equal('');
     });
     
     it('should allow customization', () => {
@@ -45,12 +49,12 @@ describe('ItemResource', () => {
             uri: 'x/y',
         })(context);
         
-        expect(api).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar']);
-        expect(api).to.have.nested.property('_spec.uri').to.equal('x/y');
+        expect(api).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar']);
+        expect(api).property(contextKey).nested.property('spec.uri').to.equal('x/y');
     });
     
     it('should allow definition of methods', () => {
-        const methodMock = sinon.stub().callsFake(({ context, agent, spec, schema }, name) => `Hello ${name}`);
+        const methodMock = sinon.stub().callsFake(name => `Hello ${name}`);
         
         const api = ItemResource(Identity, {
             store: ['foo', 'bar'],
@@ -67,15 +71,18 @@ describe('ItemResource', () => {
         expect(result).to.equal('Hello Alice');
         
         sinon.assert.calledOnce(methodMock);
-        sinon.assert.calledOn(methodMock, api._spec); // `this` should be the spec
-        sinon.assert.calledWith(methodMock, sinon.match.object, sinon.match('Alice'));
-        sinon.assert.calledWith(methodMock, sinon.match.has('context', sinon.match(context)));
-        sinon.assert.calledWith(methodMock, sinon.match.has('agent', sinon.match.same(context.agent)));
-        sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Identity)));
-        sinon.assert.calledWith(methodMock, sinon.match.has('spec', sinon.match({
-            store: ['foo', 'bar'],
-            uri: 'x/y',
-        })));
+        
+        // TODO
+        // sinon.assert.calledOn(methodMock, api._spec); // `this` should be the spec
+        // sinon.assert.calledWith(methodMock, sinon.match.object, sinon.match('Alice'));
+        // sinon.assert.calledWith(methodMock, sinon.match.has('context', sinon.match(context)));
+        // sinon.assert.calledWith(methodMock, sinon.match.has('agent', sinon.match.same(context.agent)));
+        // sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Identity)));
+        // sinon.assert.calledWith(methodMock, sinon.match.has('spec', sinon.match({
+        //     store: ['foo', 'bar'],
+        //     uri: 'x/y',
+        // })));
+        sinon.assert.calledWith(methodMock, 'Alice');
     });
     
     it('should allow definition of subresources', () => {
@@ -89,8 +96,8 @@ describe('ItemResource', () => {
         
         expect(api).to.have.property('baz');
         
-        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/baz');
+        expect(api.baz).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).property(contextKey).nested.property('spec.uri').to.equal('x/y/baz');
     });
     
     it('should use relative behavior by default for subresources', () => {
@@ -107,8 +114,8 @@ describe('ItemResource', () => {
         
         expect(api).to.have.property('baz');
         
-        expect(api.baz).to.have.nested.property('_spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).to.have.nested.property('_spec.uri').to.equal('x/y/z');
+        expect(api.baz).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).property(contextKey).nested.property('spec.uri').to.equal('x/y/z');
     });
     
     
@@ -263,8 +270,10 @@ describe('ItemResource', () => {
                 expect(result1).to.deep.equal({ name: 'Alice' });
                 
                 // Test failed decode
-                await expect(api.users['alice'].get({ bug: 'wrong-type' }))
-                    .to.be.rejectedWith(DecodeError, /failed to decode/i);
+                expect(
+                    await expect(api.users['alice'].get({ bug: 'wrong-type' }))
+                        .to.be.rejectedWith(DecodeError, /failed to decode/i)
+                ).to.have.property('errors').to.matchPattern(`[{ value: 'string', ... }]`);
                 // await expect(api.users['alice'].get({ bug: 'extra-properties' }))
                 //     .to.be.rejectedWith(DecodeError, /failed to decode/i);
             });
