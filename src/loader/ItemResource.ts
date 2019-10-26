@@ -15,129 +15,7 @@ import { either } from 'fp-ts';
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
 import { Methods, Resources, Resource, ResourcePath, StorePath, URI, Context } from './Resource.js';
-import StorablePromise from './StorablePromise.js';
-
-
-/*
-const itemDefaults = {
-    store: [],
-    uri: '',
-    resources: {},
-    methods: {
-        
-    },
-};
-
-const parse = response => {
-    if (response.status === 204) {
-        return null;
-    }
-    
-    return response.data;
-};
-
-const format = item => item;
-
-const ItemResource = (Schema, itemSpec = {}) => {
-    const makeResource = context => {
-        const { agent, config } = context;
-        
-        const isRoot = context.path.length === 0;
-        const label = isRoot ? null : context.path[context.path.length - 1];
-        
-        // Parse the item specification
-        const itemDefaultsWithContext = merge(itemDefaults, {
-            store: isRoot ? [] : [label],
-            uri: isRoot ? '' : label,
-        });
-        const spec = merge(itemDefaultsWithContext, itemSpec);
-        
-        // Make relative
-        // TODO: allow the spec to override this and use absolute references instead
-        spec.store = [...context.store, ...spec.store];
-        spec.uri = concatUri([context.uri, spec.uri]);
-        
-        const customMethods = Object.entries(spec.methods)
-            .filter(([methodName, method]) => methodName[0] !== '_')
-            .map(([methodName, method]) => {
-                const methodDecorated = (...args) => {
-                    const methodResult = method({ spec, agent }, ...args);
-                    
-                    if (methodResult instanceof StorablePromise) {
-                        return methodResult;
-                    } else if (methodResult instanceof Promise) {
-                        return StorablePromise.from(
-                            Loadable(null),
-                            { location: spec.store, operation: 'put' },
-                            methodResult
-                                .then(response => {
-                                    const responseParsed = parse(response);
-                                    return Schema.decode(responseParsed);
-                                }),
-                        );
-                    } else {
-                        throw new TypeError($msg`Unknown result ${methodResult}`);
-                    }
-                };
-                
-                return [methodName, methodDecorated];
-            })
-            .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
-        
-        const methods = {
-            get(params = {}) {
-                return StorablePromise.from(
-                    Loadable(null),
-                    { location: spec.store, operation: 'put' },
-                    agent.get(spec.uri, { params })
-                        .then(response => {
-                            return Schema.decode(parse(response));
-                        }),
-                );
-            },
-            
-            put(item, params = {}) {
-                return StorablePromise.from(
-                    Loadable(null),
-                    { location: spec.store, operation: 'put' },
-                    agent.put(spec.uri, format(Schema.encode(item)), { params })
-                        .then(response => {
-                            return Schema.decode(parse(response));
-                        }),
-                );
-            },
-            ...customMethods,
-        };
-        
-        // Subresources
-        const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
-            const resourceContext = {
-                agent: context.agent,
-                config: context.config,
-                path: [...context.path, resourceKey],
-                store: spec.store,
-                uri: spec.uri,
-            };
-            return resource(resourceContext);
-        });
-        
-        const resource = {
-            ...methods,
-            ...resources,
-            _spec: spec, // Expose the spec
-        };
-        
-        return resource;
-    };
-    
-    return Object.assign(makeResource, {
-        // Expose the schema
-        schema: Schema,
-    });
-};
-
-export default ItemResource;
-*/
+//import StorablePromise from './StorablePromise.js';
 
 
 export type ItemSchema = {
@@ -174,13 +52,9 @@ type DefaultMethods = {
 
 
 const parse = response => {
-    if (response.status === 204) {
-        return null;
-    }
-    
+    if (response.status === 204) { return null; }
     return response.data;
 };
-
 const format = item => item;
 
 export class DecodeError extends Error {
@@ -241,7 +115,7 @@ const itemDefaults = {
             return report(schema.decode(parse(response)));
             
             /*
-            return StorablePromise.from(
+            //return StorablePromise.from(
                 Loadable(null, { loading: true }),
                 // { location: spec.store, operation: 'put' }, // TEMP
                 agent.get(spec.uri, { params })
@@ -262,7 +136,7 @@ const itemDefaults = {
             return report(schema.decode(parse(response)));
             
             /*
-            return StorablePromise.from(
+            //return StorablePromise.from(
                 Loadable(null, { loading: true }),
                 // { location: spec.store, operation: 'put' }, // TEMP
                 agent.put(spec.uri, format(schema.encode(item)), { params })
@@ -331,8 +205,10 @@ export const ItemResource =
             
             
             // Get methods
+            const methods = spec.methods;
+            /*
             const methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
-                const result = method.call(this, ...args);
+                const result = method.apply(this, args);
                 
                 if (result instanceof Promise) {
                     // @ts-ignore
@@ -341,6 +217,7 @@ export const ItemResource =
                 
                 return result;
             });
+            */
             
             // Get subresources
             const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
@@ -361,6 +238,16 @@ export const ItemResource =
                     agent,
                     spec,
                     schema,
+                    storable: <T>(promise : Promise<T>) => {
+                        // TODO: make a `@storable` decorator that applies this function
+                        // Reason: using a wrapper function probably won't work inside an async function, because
+                        // we lose the promise in the `await` chain. But wrapping the entire async function in a
+                        // decorator should work.
+                        
+                        return Object.assign(promise, {
+                            storable: { location: spec.store, operation: 'put' },
+                        });
+                    },
                 },
             };
             
@@ -368,7 +255,7 @@ export const ItemResource =
         };
         
         return Object.assign(makeResource, {
-            schema, // Expose the schema
+            schema, // Expose the schema on the constructor
         });
     };
 
