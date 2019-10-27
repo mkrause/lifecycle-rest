@@ -2,7 +2,7 @@
 import $msg from 'message-tag';
 
 import env from '../util/env.js';
-import merge from '../util/merge.js';
+import merge, { Merge } from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
@@ -14,48 +14,41 @@ import { either } from 'fp-ts';
 
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
-import { Methods, Resources, Resource, ResourcePath, StorePath, URI, Context } from './Resource.js';
+import { AxiosResponse } from 'axios';
+import { Methods, Resources, Resource, ResourcePath, Agent, StorePath, URI, contextKey, Context } from './Resource.js';
 //import StorablePromise from './StorablePromise.js';
 
 
-export type ItemSchema = {
-    decode() : any,
-    encode() : any,
-};
+// Type of a schema
+export type ItemSchema = t.Type<any>;
+
+// Type of 
 export type ItemResourceSpec<Schema extends ItemSchema> = {
-    path ?: ResourcePath,
-    store ?: StorePath,
-    uri ?: URI,
-    methods ?: {
-        get ?: (context : { spec : ItemResourceSpec<Schema> }, params : {}) => Promise<unknown>,
-        put ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
-        patch ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
-        delete ?: (context : { spec : ItemResourceSpec<Schema> }) => Promise<unknown>,
-        [method : string] : undefined | ((context : { spec : ItemResourceSpec<Schema> }, ...args : any[]) => unknown),
+    path : ResourcePath,
+    store : StorePath,
+    uri : URI,
+    methods : { // ThisType<42> &
+        // get ?: (context : { spec : ItemResourceSpec<Schema> }, params : {}) => Promise<unknown>,
+        //get : (params : {}) => Promise<Schema>,
+        // put ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
+        // patch ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
+        // delete ?: (context : { spec : ItemResourceSpec<Schema> }) => Promise<unknown>,
+        [method : string] : (...args : unknown[]) => unknown,
     },
-    resources ?: {
+    resources : {
         [resource : string] : (context : Context) => Resource,
     },
 };
-
-
-type MethodsFromSpec<S extends ItemSchema, M extends Required<ItemResourceSpec<S>>['methods']> =
-    { [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
-type ResourcesFromSpec<S extends ItemSchema, R extends Required<ItemResourceSpec<S>>['resources']> =
-    { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
-
-type DefaultMethods = {
-    get : (params ?: {}) => Promise<unknown>,
-};
+export type PartialItemResourceSpec<Schema extends ItemSchema> = Partial<ItemResourceSpec<Schema>>;
 
 
 
 
-const parse = response => {
+const parse = (response : AxiosResponse) => {
     if (response.status === 204) { return null; }
     return response.data;
 };
-const format = item => item;
+const format = (item : any) => item;
 
 export class DecodeError extends Error {
     readonly errors : ValidationErrors;
@@ -66,7 +59,7 @@ export class DecodeError extends Error {
     }
 }
 
-const report = (decodeResult : Either) => { // TEMP
+const report = (decodeResult : t.Validation<any>) => { // TEMP
     if (decodeResult._tag === 'Right') {
         return decodeResult.right;
     } else {
@@ -81,6 +74,7 @@ const report = (decodeResult : Either) => { // TEMP
     }
 };
 
+/*
 const partial = (schema : t.Type) => {
     if (schema.props) {
         return t.partial(schema.props);
@@ -88,8 +82,15 @@ const partial = (schema : t.Type) => {
         return schema;
     }
 };
+*/
 
-export const contextKey = Symbol('resource.context');
+type ResourceContext<Schema extends ItemSchema> = {
+    agent : Agent,
+    spec : Required<ItemResourceSpec<Schema>>,
+    schema : Schema,
+    storable: <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
+};
+type ResourceWithContext<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
 
 const itemDefaults = {
     store: [],
@@ -108,25 +109,15 @@ const itemDefaults = {
         },
         */
         
-        async _get(params = {}) {
+        async _get<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, params = {}) {
             const { agent, spec, schema } = this[contextKey];
             
             const response = await agent.get(spec.uri, { params });
             return report(schema.decode(parse(response)));
-            
-            /*
-            //return StorablePromise.from(
-                Loadable(null, { loading: true }),
-                // { location: spec.store, operation: 'put' }, // TEMP
-                agent.get(spec.uri, { params })
-                    .then(response => {
-                        return Loadable(report(schema.decode(parse(response))), { ready: true });
-                    }),
-            );
-            */
         },
-        get(...args) { return this._get(...args); },
+        get(...args : any[]) { return (this as any)._get(...args); },
         
+        /*
         async _put(instance, params = {}) {
             const { agent, spec, schema } = this[contextKey];
             
@@ -134,17 +125,6 @@ const itemDefaults = {
             
             const response = await agent.put(spec.uri, instanceEncoded, { params });
             return report(schema.decode(parse(response)));
-            
-            /*
-            //return StorablePromise.from(
-                Loadable(null, { loading: true }),
-                // { location: spec.store, operation: 'put' }, // TEMP
-                agent.put(spec.uri, format(schema.encode(item)), { params })
-                    .then(response => {
-                        return Loadable(report(schema.decode(parse(response))), { ready: true });
-                    }),
-            );
-            */
         },
         put(...args) { return this._put(...args); },
         
@@ -175,17 +155,39 @@ const itemDefaults = {
             return response.data;
         },
         post(...args) { return this._post(...args); },
+        */
     },
 };
 
+
+type DefaultMethods = {
+    get : (params ?: {}) => Promise<unknown>,
+};
+
 export const ItemResource =
-    <Schema extends ItemSchema, Spec extends ItemResourceSpec<Schema>>(
+    <Schema extends ItemSchema, Spec extends Partial<ItemResourceSpec<Schema>>>(
         schema : Schema, itemSpec : Spec = {} as Spec
     ) => {
-        const makeResource = (context : Context) : Resource<
-            MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
-            ResourcesFromSpec<Schema, Spec['resources'] & {}>
-        > => {
+        type MethodsFromSpec<M extends ItemResourceSpec<Schema>['methods']> =
+            //{ [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
+            { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
+        type ResourcesFromSpec<R extends ItemResourceSpec<Schema>['resources']> =
+            { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
+        
+        type SpecParsed = ItemResourceSpec<Schema> & {
+            methods : Merge<DefaultMethods, MethodsFromSpec<Spec['methods'] & {}>>,
+            resources : ResourcesFromSpec<Spec['resources'] & {}>,
+        };
+        
+        type ResultResource =
+            Resource<
+                MethodsFromSpec<NonNullable<Spec['methods']>> & DefaultMethods,
+                ResourcesFromSpec<NonNullable<Spec['resources']>>
+            > & { [contextKey] : ResourceContext<Schema> };
+        
+        //return null as any as ResultResource;
+        
+        const makeResource = (context : Context) : ResultResource => {
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
@@ -196,7 +198,7 @@ export const ItemResource =
                 store: isRoot ? [] : [label],
                 uri: isRoot ? '' : label,
             });
-            const spec = merge(itemDefaultsWithContext, itemSpec);
+            const spec : Required<Spec> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
             
             // Make relative
             // TODO: allow the spec to override this and use absolute references instead
@@ -231,7 +233,7 @@ export const ItemResource =
                 return resource(resourceContext);
             });
             
-            const resource = {
+            const resource : ResultResource = {
                 ...methods,
                 ...resources,
                 [contextKey]: {
@@ -260,3 +262,20 @@ export const ItemResource =
     };
 
 export default ItemResource;
+
+
+const testContext = {
+    options : {},
+    path : [],
+    uri : '',
+    store : [],
+    agent : null as any as Agent,
+};
+const test = ItemResource(t.string, {
+    methods: {
+        foo() { return 42 as const; }
+    },
+})(testContext);
+
+// const x1 : never = test.foo();
+const x2 : never = test[contextKey].agent;

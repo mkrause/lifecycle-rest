@@ -4,12 +4,14 @@
         "**/*.spec.ts",
     ],
     "include": [
-        "src/**/*",
+        // "src/**/*",
+        "src/loader/ItemResource.ts", // TEMP
     ],
     "compilerOptions": {
         "noEmit": true,
         "lib": ["es2018"],
         "allowJs": false,
         "strict": true,
+        "noImplicitThis": true,
     },
 }
