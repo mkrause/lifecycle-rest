@@ -21,7 +21,7 @@ const optionsDefaults = {
 };
 
 // Note: `ObjectT.MergeUp` prioritizes the first argument over the second (we flip it around)
-export type Merge<O1 extends object, O2 extends object> = ObjectT.MergeUp<O2, O1>;
+export type Merge<O1 extends object, O2 extends object> = ObjectT.Merge<O2, O1, 'deep'>;
 
 export default <I1 extends object, I2 extends object>(input1 : I1, input2 : I2, options : object = {})
     : Merge<I1, I2> =>

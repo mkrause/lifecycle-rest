@@ -22,7 +22,7 @@ import { Methods, Resources, Resource, ResourcePath, Agent, StorePath, URI, cont
 // Type of a schema
 export type ItemSchema = t.Type<any>;
 
-// Type of 
+// Type of the spec used to define an ItemResource (after merging with defaults and context)
 export type ItemResourceSpec<Schema extends ItemSchema> = {
     path : ResourcePath,
     store : StorePath,
@@ -39,7 +39,6 @@ export type ItemResourceSpec<Schema extends ItemSchema> = {
         [resource : string] : (context : Context) => Resource,
     },
 };
-export type PartialItemResourceSpec<Schema extends ItemSchema> = Partial<ItemResourceSpec<Schema>>;
 
 
 
@@ -174,20 +173,21 @@ export const ItemResource =
         type ResourcesFromSpec<R extends ItemResourceSpec<Schema>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
         
-        type SpecParsed = ItemResourceSpec<Schema> & {
+        
+        // The interface of the resource, split up into its base components
+        type ResourceBase = {
             methods : Merge<DefaultMethods, MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
         };
         
-        type ResultResource =
-            Resource<
-                MethodsFromSpec<NonNullable<Spec['methods']>> & DefaultMethods,
-                ResourcesFromSpec<NonNullable<Spec['resources']>>
-            > & { [contextKey] : ResourceContext<Schema> };
+        // The interface of the resource, after merging the different components and adding context information
+        type ResourceResult =
+            Resource<ResourceBase['methods'], ResourceBase['resources']>
+            & { [contextKey] : ResourceContext<Schema> };
         
-        //return null as any as ResultResource;
+        //return null as any as (context : Context) => ResourceResult;
         
-        const makeResource = (context : Context) : ResultResource => {
+        const makeResource = (context : Context) : ResourceResult => {
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
@@ -198,7 +198,7 @@ export const ItemResource =
                 store: isRoot ? [] : [label],
                 uri: isRoot ? '' : label,
             });
-            const spec : Required<Spec> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
+            const spec : ItemResourceSpec<Schema> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
             
             // Make relative
             // TODO: allow the spec to override this and use absolute references instead
@@ -207,7 +207,7 @@ export const ItemResource =
             
             
             // Get methods
-            const methods = spec.methods;
+            const methods = spec.methods as ResourceBase['methods'];
             /*
             const methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
                 const result = method.apply(this, args);
@@ -222,18 +222,20 @@ export const ItemResource =
             */
             
             // Get subresources
-            const resources = ObjectUtil.mapValues(spec.resources, (resource, resourceKey) => {
-                const resourceContext = {
-                    agent: context.agent,
-                    options: context.options,
-                    path: [...context.path, resourceKey],
-                    store: spec.store,
-                    uri: spec.uri,
-                };
-                return resource(resourceContext);
-            });
+            const resources = ObjectUtil.mapValues(itemSpec.resources || {},
+                (resource : (ctx : Context) => Resource, resourceKey : string | number) => {
+                    const resourceContext = {
+                        agent: context.agent,
+                        options: context.options,
+                        path: [...context.path, resourceKey],
+                        store: spec.store,
+                        uri: spec.uri,
+                    };
+                    return resource(resourceContext);
+                }
+            ) as ResourceBase['resources'];
             
-            const resource : ResultResource = {
+            const resource = {
                 ...methods,
                 ...resources,
                 [contextKey]: {
@@ -251,7 +253,7 @@ export const ItemResource =
                         });
                     },
                 },
-            };
+            } as unknown as ResourceResult;
             
             return resource;
         };
@@ -277,5 +279,5 @@ const test = ItemResource(t.string, {
     },
 })(testContext);
 
-// const x1 : never = test.foo();
-const x2 : never = test[contextKey].agent;
+//const x1 : never = test.foo();
+//const x2 : never = test[contextKey].agent;
