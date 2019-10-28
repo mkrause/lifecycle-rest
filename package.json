@@ -36,6 +36,7 @@
         "mocha": "^6.2.2",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
+        "chai-match-pattern": "^1.1.0",
         "sinon": "^7.5.0",
         "redux": "^4.0.4"
     },
