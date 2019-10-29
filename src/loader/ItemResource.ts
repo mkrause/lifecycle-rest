@@ -60,7 +60,7 @@ type ResourceContext<Schema extends ItemSchema> = {
     schemaMethods : typeof schemaMethods,
     storable: <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
 };
-type ResourceWithContext<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
+type ItemResource<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
 
 const schemaMethods = {
     parse(response : AxiosResponse) {
@@ -93,13 +93,13 @@ const schemaMethods = {
         }
     },
     
-    decode<Schema extends ItemSchema>(resource : ResourceWithContext<Schema>, input : unknown) {
+    decode<Schema extends ItemSchema>(resource : ItemResource<Schema>, input : unknown) {
         const { agent, spec, schema, schemaMethods } = resource[contextKey];
         
         return schemaMethods.report(schema.decode(input));
     },
     
-    encode<Schema extends ItemSchema>(resource : ResourceWithContext<Schema>, instance : unknown) {
+    encode<Schema extends ItemSchema>(resource : ItemResource<Schema>, instance : unknown) {
         const { agent, spec, schema, schemaMethods } = resource[contextKey];
         
         return schema.encode(instance);
@@ -111,19 +111,19 @@ const itemDefaults = {
     uri: '',
     resources: {},
     methods: {
-        async head<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, params = {}) {
+        async head<Schema extends ItemSchema>(this : ItemResource<Schema>, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             const response = await agent.head(spec.uri, { params });
             return response;
         },
         
-        async get<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, params = {}) {
+        async get<Schema extends ItemSchema>(this : ItemResource<Schema>, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             const response = await agent.get(spec.uri, { params });
             return schemaMethods.decode(this, schemaMethods.parse(response));
         },
         
-        async put<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, instance : unknown, params = {}) {
+        async put<Schema extends ItemSchema>(this : ItemResource<Schema>, instance : unknown, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             
             const instanceEncoded = schemaMethods.encode(this, instance);
@@ -132,7 +132,7 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async patch<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, instance : unknown, params = {}) {
+        async patch<Schema extends ItemSchema>(this : ItemResource<Schema>, instance : unknown, params = {}) {
             const { agent, spec, schema } = this[contextKey];
             
             const schemaPartial = schemaMethods.partial(schema);
@@ -143,16 +143,14 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async delete<Schema extends ItemSchema>(this : ResourceWithContext<Schema>,
-            instanceEncoded : unknown, params = {}
-        ) {
+        async delete<Schema extends ItemSchema>(this : ItemResource<Schema>, instanceEncoded : unknown, params = {}) {
             const { agent, spec, schema } = this[contextKey];
             
             const response = await agent.delete(spec.uri, { params });
             return response.data;
         },
         
-        async post<Schema extends ItemSchema>(this : ResourceWithContext<Schema>, body : unknown, params = {}) {
+        async post<Schema extends ItemSchema>(this : ItemResource<Schema>, body : unknown, params = {}) {
             const { agent, spec, schema } = this[contextKey];
             
             const response = await agent.post(spec.uri, { params });
@@ -180,11 +178,11 @@ export const ItemResource =
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type ResourceResult =
+        type ItemResource =
             Resource<ResourceBase['methods'], ResourceBase['resources']>
             & { [contextKey] : ResourceContext<Schema> };
         
-        const makeResource = (context : Context) : ResourceResult => {
+        const makeResource = (context : Context) : ItemResource => {
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
@@ -240,7 +238,7 @@ export const ItemResource =
                     spec,
                     schema,
                     schemaMethods,
-                    storable: <T>(promise : Promise<T>) => {
+                    storable: (promise : Promise<unknown>) => {
                         // TODO: make a `@storable` decorator that applies this function
                         // Reason: using a wrapper function probably won't work inside an async function, because
                         // we lose the promise in the `await` chain. But wrapping the entire async function in a
@@ -251,7 +249,7 @@ export const ItemResource =
                         });
                     },
                 },
-            } as unknown as ResourceResult;
+            } as unknown as ItemResource;
             
             return resource;
         };
@@ -276,9 +274,17 @@ const test = ItemResource(t.string, {
     methods: {
         foo() { return 42 as const; }
     },
+    resources: {
+        res: ItemResource(t.string, {
+            methods: {
+                foo() { return 43 as const; }
+            },
+            resources: {
+                
+            },
+        }),
+    },
 })(testContext);
 
-const x0 : Agent = test[contextKey].agent;
-const x1 : 42 = test.foo();
-const x2 : Promise<unknown> = test.get();
+const x1 : never = test.res.foo();
 */
