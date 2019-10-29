@@ -38,6 +38,7 @@ export type ItemResourceSpec<Schema extends ItemSchema> = {
     resources : {
         [resource : string] : (context : Context) => Resource,
     },
+    entry : (context : Context) => Resource,
 };
 
 
@@ -169,17 +170,20 @@ export const ItemResource =
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
         type ResourcesFromSpec<R extends ItemResourceSpec<Schema>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
+        type EntryFromSpec<E extends ItemResourceSpec<Schema>['entry']> =
+            E extends (context : Context) => infer R ? { (index : string) : R } : never;
         
         
         // The interface of the resource, split up into its base components
         type ResourceBase = {
             methods : Merge<(typeof itemDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
+            entry : Spec['entry'] extends Function ? EntryFromSpec<Spec['entry']> : {},
         };
         
         // The interface of the resource, after merging the different components and adding context information
         type ItemResource =
-            Resource<ResourceBase['methods'], ResourceBase['resources']>
+            Resource<ResourceBase['methods'], ResourceBase['resources'], ResourceBase['entry']>
             & { [contextKey] : ResourceContext<Schema> };
         
         const makeResource = (context : Context) : ItemResource => {
@@ -230,7 +234,7 @@ export const ItemResource =
                 }
             ) as ResourceBase['resources'];
             
-            const resource = {
+            let resource = {
                 ...methods,
                 ...resources,
                 [contextKey]: {
@@ -250,6 +254,24 @@ export const ItemResource =
                     },
                 },
             } as unknown as ItemResource;
+            
+            const entry = itemSpec.entry;
+            if (typeof entry === 'function') {
+                resource = Object.assign(
+                    (index : string) => {
+                        const entryContext = {
+                            options,
+                            agent,
+                            path: [...spec.path, { index }],
+                            store: [...spec.store, index],
+                            uri: concatUri([spec.uri, index]),
+                        };
+                        return entry(entryContext);
+                    },
+                    resource
+                );
+            }
+            
             
             return resource;
         };
@@ -284,7 +306,15 @@ const test = ItemResource(t.string, {
             },
         }),
     },
+    entry: ItemResource(t.string, {
+        methods: {
+            foo() { return 44 as const; }
+        },
+        resources: {
+            
+        },
+    }),
 })(testContext);
 
-const x1 : never = test.res.foo();
+const x1 : never = test('xyz').foo();
 */
