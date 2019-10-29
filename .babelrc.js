@@ -3,10 +3,9 @@ const env = process.env.BABEL_ENV || 'esm';
 
 module.exports = {
     presets: [
-        '@babel/typescript',
         ['@babel/env', {
             targets: {
-                node: '6.9', // LTS (Boron)
+                node: '8.9', // LTS (Carbon)
                 browsers: ['>0.25%', 'not dead'],
             },
             
@@ -18,6 +17,7 @@ module.exports = {
                 'transform-regenerator',
             ],
         }],
+        '@babel/typescript',
     ],
     plugins: [
         // Note: this may cause issues with `export * from` syntax:
