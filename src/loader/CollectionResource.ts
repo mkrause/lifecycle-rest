@@ -2,265 +2,25 @@
 import $msg from 'message-tag';
 
 import env from '../util/env.js';
-//import merge from '../util/merge.js';
+import merge, { Merge } from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
+import * as t from 'io-ts';
+import { PathReporter } from 'io-ts/lib/PathReporter.js';
+import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+import { either } from 'fp-ts';
+
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
-import { Methods, Resources, Resource, ResourcePathStep, ResourcePath, StorePath, URI, Context } from './Resource.js';
+import { AxiosResponse } from 'axios';
+import { Methods, Resources, Resource, ResourcePath, Agent, StorePath, URI, contextKey, Context } from './Resource.js';
 //import StorablePromise from './StorablePromise.js';
 
+import ItemResource, { ItemResourceT, ItemSchema, ItemResourceSpec, ResourceContext as ItemResourceContext } from './ItemResource.js';
+
 /*
-import env from '../util/env.js';
-import merge from '../util/merge.js';
-import uuid from 'uuid';
-import $msg from 'message-tag';
-import $uri from 'uri-tag';
-import { concatUri } from '../util/uri.js';
-
-import { status, Loadable } from '@mkrause/lifecycle-loader';
-import type { LoadableT } from '@mkrause/lifecycle-loader';
-
-import StorablePromise from './StorablePromise.js';
-import { SimpleItem } from './Resource.js';
-import type { ItemSchema } from './Resource.js';
-import ItemResource, { SimpleResource } from './ItemResource.js';
-
-
-class SimpleCollection {
-    static instantiate() { return {}; }
-    static decode(instanceEncoded : mixed) : Item { return instanceEncoded; }
-    static encode(instance : Item) : mixed { return instance; }
-}
-
-const collectionDefaults = agent => ({
-    store: [],
-    uri: '',
-    parse: response => {
-        if (Array.isArray(response)) {
-            return response;
-        } else {
-            throw new TypeError($msg`Unknown collection response format: ${response}`);
-        }
-    },
-    methods: {
-        _query: async (spec, decode, query) => {
-            const items = decode(await agent.get(spec.uri, { params: query }));
-            
-            // Note: user-defined implementations will likely add more info here, like counts for
-            // total/filtered records.
-            const queryResult = {
-                items,
-            };
-            
-            return queryResult;
-        },
-        _list: (spec, { hint = null } = {}) => {
-            return agent.get(spec.uri);
-        },
-        _create: ({ spec }, item) => {
-            return agent.post(spec.uri, spec.entry.schema.encode(item));
-        },
-        // get: (spec, index) => {
-        //     return agent.get(`${spec.uri}/${index}`);
-        // },
-        // update: (spec, index, entity) => {
-        //     // TODO: prefer to use PATCH (if available)
-        //     return agent.put(`${spec.uri}/${index}`).send(entity.toJSON());
-        // },
-        // delete: (spec, index) => {
-        //     return agent.delete(`${spec.uri}/${index}`);
-        // },
-    },
-    entry: ItemResource(SimpleItem),
-    resources: {},
-});
-
-
-const loaders = {
-    // Invalidate an item in the store and clear the corresponding data. Note: does *not* perform a
-    // delete operation in the API, only clears the information that's currently in loaded the store.
-    dispose: (Schema : ItemSchema, spec) => (...options) => {
-        const emptyCollection = Schema.instantiate();
-        
-        return StorablePromise.from(
-            Loadable(null),
-            { location: spec.store, operation: 'put' },
-            Promise.resolve(emptyCollection)
-        );
-    },
-    
-    // Load a complete collection.
-    list: (Schema : ItemSchema, spec) => (...options) => {
-        return StorablePromise.from(
-            Loadable(null),
-            { location: spec.store, operation: 'put' },
-            spec.methods._list(spec, ...options)
-                .then(response => {
-                    if (typeof Schema === 'function' && response instanceof Schema) {
-                        return response;
-                    }
-                    
-                    // Parse the response
-                    const instanceEncoded = spec.parse(response.data);
-                    
-                    // Parse the encoded instance as an instance of the schema
-                    const collectionResult = Schema.decode(instanceEncoded);
-                    
-                    return collectionResult;
-                })
-        );
-    },
-    
-    // Load a partial collection by means of a collection query (ordering, filtering, etc.). Should result
-    // in a subset of the collection's entries being loaded in the store. In addition, any query-specific
-    // information is returned  to the caller (like ordering, query statistics (count), etc.).
-    // query: (Schema : ItemSchema, spec) => (...options) => {
-    //     const decode = response => {
-    //         if (typeof Schema === 'function' && response instanceof Schema) {
-    //             return response;
-    //         }
-    //         
-    //         // Parse the response
-    //         const instanceEncoded = spec.parse(response.data);
-    //         
-    //         // Parse the encoded instance as an instance of the schema
-    //         const collectionResult = Schema.decode(instanceEncoded);
-    //         
-    //         return collectionResult;
-    //     };
-    //     
-    //     const updateStore = result => {
-    //         if (typeof result === 'object' && result && result.items && status in result.items) {
-    //             //...
-    //         }
-    //     };
-    //     
-    //     return StorablePromise.from(
-    //         Loadable(null),
-    //         { location: spec.store, operation: updateStore },
-    //         spec.methods.query(spec, decode, ...options)
-    //     );
-    // },
-    
-    // Add a new entry to the collection. This is essentially an operation on a specific entry, not the
-    // collection. However, in this case we do not yet have a key. You can think of `create()` as a
-    // combination of a "generate key" operation, and a write to that key.
-    create: (Schema : ItemSchema, spec) => (item, ...options) => {
-        const EntrySchema = spec.entry.schema;
-        
-        return StorablePromise.from(
-            Loadable(null),
-            { location: spec.store, operation: 'put' },
-            spec.methods._create({ spec }, item, ...options)
-                .then(response => {
-                    // Note: we need at minimum the key of the item that has been created. Usually the
-                    // result of a create operation will the item as it would be returned by a get on
-                    // that resource, so we can immediately load that into the store.
-                    
-                    if (typeof EntrySchema === 'function' && response instanceof EntrySchema) {
-                        return response;
-                    }
-                    
-                    // Parse the response
-                    const parseItem = response => response; // TODO: make configurable
-                    const instanceEncoded = parseItem(response.data);
-                    
-                    // Parse the encoded instance as an instance of the schema
-                    const entryResult = EntrySchema.decode(instanceEncoded);
-                    
-                    return entryResult;
-                })
-        );
-    },
-};
-
-const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSpec = {}) => context => {
-    const { agent, config } = context;
-    
-    const isRoot = context.path.length === 0;
-    const label = isRoot ? null : context.path[context.path.length - 1];
-    
-    
-    // Parse the collection specification
-    const collectionDefaultsWithContext = merge(collectionDefaults(agent), {
-        uri: isRoot ? '' : label,
-        store: isRoot ? [] : [label],
-    });
-    const spec = merge(collectionDefaultsWithContext, collectionSpec);
-    
-    // Make relative
-    // TODO: allow the spec to override this and use absolute references instead
-    spec.uri = concatUri([context.uri, spec.uri]);
-    spec.store = [...context.store, ...spec.store];
-    
-    const customMethods = Object.entries(spec.methods)
-        .filter(([methodName, method]) => methodName[0] !== '_')
-        .map(([methodName, method]) => {
-            const methodDecorated = (...args) => {
-                const storable = (storableSpec = {}, promise) => {
-                    return StorablePromise.from(Loadable(null), { location: spec.store, ...storableSpec }, promise);
-                }
-                
-                const methodResult = method({ spec, agent, storable }, ...args);
-                
-                if (methodResult instanceof StorablePromise) {
-                    return methodResult;
-                } else if (methodResult instanceof Promise) {
-                    return storable({},
-                        methodResult
-                            .then(response => {
-                                const responseParsed = spec.parse(response.data);
-                                return Schema.decode(responseParsed);
-                            }),
-                    );
-                } else {
-                    throw new TypeError($msg`Unknown result ${methodResult}`);
-                }
-            };
-            
-            return [methodName, methodDecorated];
-        })
-        .reduce((acc, [methodName, method]) => ({ ...acc, [methodName]: method }), {});
-    
-    const methods = {
-        dispose: loaders.dispose(Schema, spec),
-        list: loaders.list(Schema, spec),
-        //query: loaders.query(Schema, spec),
-        create: loaders.create(Schema, spec),
-        
-        // get: loaders.get(Schema, spec),
-        // put: loaders.put(Schema, spec),
-        // patch: loaders.patch(Schema, spec),
-    };
-    
-    // Take an index into this collection, and return a new API resource representing that entry resource
-    const getEntry = index => {
-        const entryContext = {
-            agent: context.agent,
-            config: context.config,
-            path: [...context.path, index],
-            store: spec.store,
-            uri: spec.uri,
-        };
-        
-        return spec.entry(entryContext);
-    };
-    
-    // Expose some information about this resource
-    const info = {
-        _spec: spec,
-    };
-    
-    return Object.assign(getEntry, methods, customMethods, info);
-};
-
-export default CollectionResource;
-*/
-
-
 export type CollectionSchema = unknown;
 export type CollectionResourceSpec<Schema extends CollectionSchema> = {
     path ?: ResourcePath,
@@ -299,6 +59,57 @@ export const CollectionResource =
     > => {
         const { path, store, uri } = context;
         return null as any;
+    };
+
+export default CollectionResource;
+*/
+
+type CollectionSchema = ItemSchema;
+type CollectionResourceSpec<Schema extends CollectionSchema> = ItemResourceSpec<Schema>;
+
+type CollectionResourceT<Schema extends CollectionSchema> =
+    Resource<{}, {}, { <EntrySchema extends ItemSchema>(index : string) : ItemResourceT<EntrySchema> }>
+    & { [contextKey] : ItemResourceContext<Schema> };
+
+const collectionMethods = {
+    async list<Schema extends CollectionSchema>(this : CollectionResourceT<Schema>, params = {}) {
+        const { agent, spec, schema, schemaMethods } = this[contextKey];
+        const response = await agent.get(spec.uri, { params });
+        return schemaMethods.decode(this, schemaMethods.parse(response));
+    },
+    
+    async post<Schema extends CollectionSchema>(this : CollectionResourceT<Schema>,
+        instance : unknown, params = {}
+    ) {
+        const { agent, spec, schema, schemaMethods } = this[contextKey];
+        
+        const entryResource = this('[new]'); // FIXME
+        const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[contextKey];
+        
+        const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
+        
+        const response = await agent.post(spec.uri, instanceEncoded, { params });
+        return entrySchemaMethods.report(schema.decode(entrySchemaMethods.parse(response)));
+    },
+};
+
+export const CollectionResource = <
+        Schema extends CollectionSchema,
+        Spec extends Partial<CollectionResourceSpec<Schema>>
+    >(schema : Schema, collectionSpec : Spec = {} as Spec) => {
+        // TODO: need to add the additional methods (like `list`) to this interface
+        type CollectionResourceT<Schema extends ItemSchema> = ItemResourceT<Schema>;
+        
+        const collectionSpecProcessed = merge(
+            {
+                methods: collectionMethods,
+            },
+            collectionSpec,
+        );
+        
+        const itemResource = ItemResource(schema, collectionSpecProcessed);
+        
+        return itemResource as unknown as CollectionResourceT<Schema>;
     };
 
 export default CollectionResource;

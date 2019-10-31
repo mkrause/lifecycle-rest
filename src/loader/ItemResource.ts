@@ -54,14 +54,14 @@ export class DecodeError extends Error {
 }
 
 
-type ResourceContext<Schema extends ItemSchema> = {
+export type ResourceContext<Schema extends ItemSchema> = {
     agent : Agent,
     spec : Required<ItemResourceSpec<Schema>>,
     schema : Schema,
     schemaMethods : typeof schemaMethods,
     storable: <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
 };
-type ItemResource<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
+export type ItemResourceT<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
 
 const schemaMethods = {
     parse(response : AxiosResponse) {
@@ -94,13 +94,13 @@ const schemaMethods = {
         }
     },
     
-    decode<Schema extends ItemSchema>(resource : ItemResource<Schema>, input : unknown) {
+    decode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, input : unknown) {
         const { agent, spec, schema, schemaMethods } = resource[contextKey];
         
         return schemaMethods.report(schema.decode(input));
     },
     
-    encode<Schema extends ItemSchema>(resource : ItemResource<Schema>, instance : unknown) {
+    encode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, instance : unknown) {
         const { agent, spec, schema, schemaMethods } = resource[contextKey];
         
         return schema.encode(instance);
@@ -108,23 +108,24 @@ const schemaMethods = {
 };
 
 const itemDefaults = {
+    path: [],
     store: [],
     uri: '',
     resources: {},
     methods: {
-        async head<Schema extends ItemSchema>(this : ItemResource<Schema>, params = {}) {
+        async head<Schema extends ItemSchema>(this : ItemResourceT<Schema>, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             const response = await agent.head(spec.uri, { params });
             return response;
         },
         
-        async get<Schema extends ItemSchema>(this : ItemResource<Schema>, params = {}) {
+        async get<Schema extends ItemSchema>(this : ItemResourceT<Schema>, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             const response = await agent.get(spec.uri, { params });
             return schemaMethods.decode(this, schemaMethods.parse(response));
         },
         
-        async put<Schema extends ItemSchema>(this : ItemResource<Schema>, instance : unknown, params = {}) {
+        async put<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instance : unknown, params = {}) {
             const { agent, spec, schema, schemaMethods } = this[contextKey];
             
             const instanceEncoded = schemaMethods.encode(this, instance);
@@ -133,8 +134,8 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async patch<Schema extends ItemSchema>(this : ItemResource<Schema>, instance : unknown, params = {}) {
-            const { agent, spec, schema } = this[contextKey];
+        async patch<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instance : unknown, params = {}) {
+            const { agent, spec, schema, schemaMethods } = this[contextKey];
             
             const schemaPartial = schemaMethods.partial(schema);
             
@@ -144,15 +145,15 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async delete<Schema extends ItemSchema>(this : ItemResource<Schema>, instanceEncoded : unknown, params = {}) {
-            const { agent, spec, schema } = this[contextKey];
+        async delete<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instanceEncoded : unknown, params = {}) {
+            const { agent, spec, schema, schemaMethods } = this[contextKey];
             
             const response = await agent.delete(spec.uri, { params });
             return response.data;
         },
         
-        async post<Schema extends ItemSchema>(this : ItemResource<Schema>, body : unknown, params = {}) {
-            const { agent, spec, schema } = this[contextKey];
+        async post<Schema extends ItemSchema>(this : ItemResourceT<Schema>, body : unknown, params = {}) {
+            const { agent, spec, schema, schemaMethods } = this[contextKey];
             
             const response = await agent.post(spec.uri, { params });
             return response.data;
@@ -182,11 +183,11 @@ export const ItemResource =
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type ItemResource =
+        type ItemResourceT =
             Resource<ResourceBase['methods'], ResourceBase['resources'], ResourceBase['entry']>
             & { [contextKey] : ResourceContext<Schema> };
         
-        const makeResource = (context : Context) : ItemResource => {
+        const makeResource = (context : Context) : ItemResourceT => {
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
@@ -201,6 +202,7 @@ export const ItemResource =
             
             // Make relative
             // TODO: allow the spec to override this and use absolute references instead
+            spec.path = [...context.path, ...spec.path];
             spec.store = [...context.store, ...spec.store];
             spec.uri = concatUri([context.uri, spec.uri]);
             
@@ -253,7 +255,7 @@ export const ItemResource =
                         });
                     },
                 },
-            } as unknown as ItemResource;
+            } as unknown as ItemResourceT;
             
             const entry = itemSpec.entry;
             if (typeof entry === 'function') {
