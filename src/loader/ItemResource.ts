@@ -39,7 +39,7 @@ export type ItemResourceSpec<S extends ItemSchema> = {
 export type ItemResourceT<S extends ItemSchema> = Resource<S>
     & {
         [resourceDef] : {
-            spec : {}, // XXX can put `ItemResource`-specific info in here
+            spec : {}, // Note: can put `ItemResource`-specific info in here
         },
     };
 
@@ -232,7 +232,7 @@ export const ItemResource =
                 ...resources,
                 [resourceDef]: {
                     agent,
-                    spec,
+                    ...spec,
                     schema,
                     schemaMethods,
                     storable: (promise : Promise<unknown>) => {

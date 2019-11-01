@@ -14,11 +14,12 @@ import { status, Loadable } from '@mkrause/lifecycle-loader';
 import createAgent from '../../../lib-esm/agent.js';
 // import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
 // import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
-import { Identity } from '../../../lib-esm/schema/Schema.js';
+import { Unknown } from '../../../lib-esm/schema/Schema.js';
 import agentMock from '../../resources/agent_mock.js';
 
-import { contextKey } from '../../../lib-esm/loader/Resource.js';
-import ItemResource, { DecodeError } from '../../../lib-esm/loader/ItemResource.js';
+import { DecodeError } from '../../../lib-esm/schema/Schema.js';
+import { resourceDef } from '../../../lib-esm/loader/Resource.js';
+import ItemResource from '../../../lib-esm/loader/ItemResource.js';
 
 
 require('util').inspect.defaultOptions.depth = Infinity;
@@ -38,26 +39,26 @@ describe('ItemResource', () => {
     };
     
     it('should have sensible defaults', () => {
-        const api = ItemResource(Identity)(context);
+        const api = ItemResource(Unknown)(context);
         
-        expect(api).property(contextKey).nested.property('spec.store').to.deep.equal([]);
-        expect(api).property(contextKey).nested.property('spec.uri').to.deep.equal('');
+        expect(api).property(resourceDef).nested.property('store').to.deep.equal([]);
+        expect(api).property(resourceDef).nested.property('uri').to.deep.equal('');
     });
     
     it('should allow customization', () => {
-        const api = ItemResource(Identity, {
+        const api = ItemResource(Unknown, {
             store: ['foo', 'bar'],
             uri: 'x/y',
         })(context);
         
-        expect(api).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar']);
-        expect(api).property(contextKey).nested.property('spec.uri').to.equal('x/y');
+        expect(api).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar']);
+        expect(api).property(resourceDef).nested.property('uri').to.equal('x/y');
     });
     
     it('should allow definition of methods', () => {
         const methodMock = sinon.stub().callsFake(name => `Hello ${name}`);
         
-        const api = ItemResource(Identity, {
+        const api = ItemResource(Unknown, {
             store: ['foo', 'bar'],
             uri: 'x/y',
             methods: {
@@ -78,7 +79,7 @@ describe('ItemResource', () => {
         // sinon.assert.calledWith(methodMock, sinon.match.object, sinon.match('Alice'));
         // sinon.assert.calledWith(methodMock, sinon.match.has('context', sinon.match(context)));
         // sinon.assert.calledWith(methodMock, sinon.match.has('agent', sinon.match.same(context.agent)));
-        // sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Identity)));
+        // sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Unknown)));
         // sinon.assert.calledWith(methodMock, sinon.match.has('spec', sinon.match({
         //     store: ['foo', 'bar'],
         //     uri: 'x/y',
@@ -87,26 +88,26 @@ describe('ItemResource', () => {
     });
     
     it('should allow definition of subresources', () => {
-        const api = ItemResource(Identity, {
+        const api = ItemResource(Unknown, {
             store: ['foo', 'bar'],
             uri: 'x/y',
             resources: {
-                baz: ItemResource(Identity),
+                baz: ItemResource(Unknown),
             },
         })(context);
         
         expect(api).to.have.property('baz');
         
-        expect(api.baz).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).property(contextKey).nested.property('spec.uri').to.equal('x/y/baz');
+        expect(api.baz).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).property(resourceDef).nested.property('uri').to.equal('x/y/baz');
     });
     
     it('should use relative behavior by default for subresources', () => {
-        const api = ItemResource(Identity, {
+        const api = ItemResource(Unknown, {
             store: ['foo', 'bar'],
             uri: 'x/y',
             resources: {
-                baz: ItemResource(Identity, {
+                baz: ItemResource(Unknown, {
                     store: ['baz'],
                     uri: 'z',
                 }),
@@ -115,8 +116,8 @@ describe('ItemResource', () => {
         
         expect(api).to.have.property('baz');
         
-        expect(api.baz).property(contextKey).nested.property('spec.store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).property(contextKey).nested.property('spec.uri').to.equal('x/y/z');
+        expect(api.baz).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar', 'baz']);
+        expect(api.baz).property(resourceDef).nested.property('uri').to.equal('x/y/z');
     });
     
     
@@ -131,12 +132,12 @@ describe('ItemResource', () => {
     describe('without schema', () => {
         // Test
         
-        const apiStandard = ItemResource(Identity, {
+        const apiStandard = ItemResource(Unknown, {
             uri: '/api',
             resources: {
-                users: ItemResource(Identity, {
+                users: ItemResource(Unknown, {
                     resources: {
-                        alice: ItemResource(Identity),
+                        alice: ItemResource(Unknown),
                     },
                 }),
             },
@@ -144,10 +145,10 @@ describe('ItemResource', () => {
         
         describe('method `get`', () => {
             it('should be supported as default method', async () => {
-                const api = ItemResource(Identity, {
+                const api = ItemResource(Unknown, {
                     uri: '/api',
                     resources: {
-                        greet: ItemResource(Identity, {
+                        greet: ItemResource(Unknown, {
                             uri: 'greet',
                         }),
                     },

@@ -14,10 +14,10 @@ import { status, Loadable } from '@mkrause/lifecycle-loader';
 import createAgent from '../../../lib-esm/agent.js';
 // import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
 // import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
-import { Identity } from '../../../lib-esm/schema/Schema.js';
+import { Unknown } from '../../../lib-esm/schema/Schema.js';
 import agentMock from '../../resources/agent_mock.js';
 
-import { contextKey } from '../../../lib-esm/loader/Resource.js';
+import { resourceDef } from '../../../lib-esm/loader/Resource.js';
 import ItemResource, { DecodeError } from '../../../lib-esm/loader/ItemResource.js';
 import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
 
@@ -37,11 +37,11 @@ describe('CollectionResource', () => {
     };
     
     describe('...', () => {
-        const apiStandard = ItemResource(Identity, {
+        const apiStandard = ItemResource(Unknown, {
             uri: '/api',
             resources: {
-                users: CollectionResource(Identity, {
-                    entry: ItemResource(Identity),
+                users: CollectionResource(Unknown, {
+                    entry: ItemResource(Unknown),
                 }),
             },
         })(contextWithAgent);

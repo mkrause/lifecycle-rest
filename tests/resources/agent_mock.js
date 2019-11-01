@@ -11,6 +11,9 @@ import createAgent from '../../lib-esm/agent.js';
 Simple mock REST API endpoint
 */
 
+// Note: this module should be completely stateless. Do not actually update any state, just return a response
+// indicating that the state update was successful. (Use `Object.freeze()` to enforce.)
+
 export const users = Object.freeze({
     alice: { name: 'Alice' },
     bob: { name: 'Bob' },
@@ -19,9 +22,6 @@ export const users = Object.freeze({
 
 const handleRequest = async request => {
     const { method, url, params } = request;
-    
-    // Note: in the following, we should not actually update any state. Just return a response indicating that
-    // the state update was successful.
     
     let matches;
     if (url === '/api' && method === 'get') {
