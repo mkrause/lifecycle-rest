@@ -1,67 +1,49 @@
 
-import $msg from 'message-tag';
-
 import env from '../util/env.js';
+
+import $msg from 'message-tag';
 import merge, { Merge } from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
-import * as t from 'io-ts';
-import { PathReporter } from 'io-ts/lib/PathReporter.js';
-import { Errors as ValidationErrors, ValidationError } from 'io-ts';
-import { either } from 'fp-ts';
-
-import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
+import { Schema, DecodeError } from '../schema/Schema.js';
 
 import { AxiosResponse } from 'axios';
-import { Methods, Resources, Resource, ResourcePath, Agent, StorePath, URI, contextKey, Context } from './Resource.js';
-//import StorablePromise from './StorablePromise.js';
+import { ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
+
+// TEMP
+import { PathReporter } from 'io-ts/lib/PathReporter.js';
+import * as t from 'io-ts';
+import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 
 
-// Type of a schema
-export type ItemSchema = t.Type<any>;
+export type ItemSchema = Schema;
 
 // Type of the spec used to define an ItemResource (after merging with defaults and context)
-export type ItemResourceSpec<Schema extends ItemSchema> = {
+export type ItemResourceSpec<S extends ItemSchema> = {
     path : ResourcePath,
-    store : StorePath,
     uri : URI,
-    methods : { // ThisType<42> &
-        // get ?: (context : { spec : ItemResourceSpec<Schema> }, params : {}) => Promise<unknown>,
-        //get : (params : {}) => Promise<Schema>,
-        // put ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
-        // patch ?: (context : { spec : ItemResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
-        // delete ?: (context : { spec : ItemResourceSpec<Schema> }) => Promise<unknown>,
+    store : StorePath,
+    methods : { // ThisType<Resource> &
         [method : string] : (...args : unknown[]) => unknown,
     },
     resources : {
-        [resource : string] : (context : Context) => Resource,
+        [resource : string] : (context : Context) => Resource<Schema>,
     },
-    entry : (context : Context) => Resource,
+    entry : (context : Context) => Resource<Schema>,
 };
 
 
-
-
-export class DecodeError extends Error {
-    readonly errors : ValidationErrors;
-    
-    constructor(reason : string, errors : ValidationErrors) {
-        super(reason);
-        this.errors = errors;
+// Extension of `Resource` specialized to `ItemResource`
+export type ItemResourceT<S extends ItemSchema> = Resource<S>
+    & {
+        [resourceDef] : {
+            spec : {}, // XXX can put `ItemResource`-specific info in here
+        },
     }
-}
+    & { (index : string) : Resource<Schema> };
 
-
-export type ResourceContext<Schema extends ItemSchema> = {
-    agent : Agent,
-    spec : Required<ItemResourceSpec<Schema>>,
-    schema : Schema,
-    schemaMethods : typeof schemaMethods,
-    storable: <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
-};
-export type ItemResourceT<Schema extends ItemSchema> = Resource & { [contextKey] : ResourceContext<Schema> };
 
 const schemaMethods = {
     parse(response : AxiosResponse) {
@@ -95,13 +77,13 @@ const schemaMethods = {
     },
     
     decode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, input : unknown) {
-        const { agent, spec, schema, schemaMethods } = resource[contextKey];
+        const { agent, spec, schema, schemaMethods } = resource[resourceDef];
         
         return schemaMethods.report(schema.decode(input));
     },
     
     encode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, instance : unknown) {
-        const { agent, spec, schema, schemaMethods } = resource[contextKey];
+        const { agent, spec, schema, schemaMethods } = resource[resourceDef];
         
         return schema.encode(instance);
     },
@@ -113,20 +95,20 @@ const itemDefaults = {
     uri: '',
     resources: {},
     methods: {
-        async head<Schema extends ItemSchema>(this : ItemResourceT<Schema>, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             const response = await agent.head(spec.uri, { params });
             return response;
         },
         
-        async get<Schema extends ItemSchema>(this : ItemResourceT<Schema>, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
             return schemaMethods.decode(this, schemaMethods.parse(response));
         },
         
-        async put<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instance : unknown, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             
             const instanceEncoded = schemaMethods.encode(this, instance);
             
@@ -134,8 +116,8 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async patch<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instance : unknown, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             
             const schemaPartial = schemaMethods.partial(schema);
             
@@ -145,15 +127,15 @@ const itemDefaults = {
             return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
         },
         
-        async delete<Schema extends ItemSchema>(this : ItemResourceT<Schema>, instanceEncoded : unknown, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             
             const response = await agent.delete(spec.uri, { params });
             return response.data;
         },
         
-        async post<Schema extends ItemSchema>(this : ItemResourceT<Schema>, body : unknown, params = {}) {
-            const { agent, spec, schema, schemaMethods } = this[contextKey];
+        async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             
             const response = await agent.post(spec.uri, { params });
             return response.data;
@@ -163,31 +145,44 @@ const itemDefaults = {
 
 
 export const ItemResource =
-    <Schema extends ItemSchema, Spec extends Partial<ItemResourceSpec<Schema>>>(
-        schema : Schema, itemSpec : Spec = {} as Spec
+    <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
+        schema : S, itemSpec : Spec = {} as Spec
     ) => {
-        type MethodsFromSpec<M extends ItemResourceSpec<Schema>['methods']> =
+        // Make sure there's no `resourceDef` key included (should not be overridden)
+        const itemSpecMethods = itemSpec['methods'] || {};
+        const itemSpecResources = itemSpec['resources'] || {};
+        if (resourceDef in itemSpecMethods || resourceDef in itemSpecResources) {
+            throw new TypeError($msg`Cannot override resourceDef key`);
+        }
+        
+        // Utility types
+        type MethodsFromSpec<M extends ItemResourceSpec<S>['methods']> =
             //{ [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
-        type ResourcesFromSpec<R extends ItemResourceSpec<Schema>['resources']> =
+        type ResourcesFromSpec<R extends ItemResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
-        type EntryFromSpec<E extends ItemResourceSpec<Schema>['entry']> =
+        type EntryFromSpec<E extends ItemResourceSpec<S>['entry']> =
             E extends (context : Context) => infer R ? { (index : string) : R } : never;
         
-        
         // The interface of the resource, split up into its base components
-        type ResourceBase = {
+        type ResourceComponents = {
             methods : Merge<(typeof itemDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
-            entry : Spec['entry'] extends Function ? EntryFromSpec<Spec['entry']> : {},
+            entry : Spec['entry'] extends object ? EntryFromSpec<Spec['entry']> : {},
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type ItemResourceT =
-            Resource<ResourceBase['methods'], ResourceBase['resources'], ResourceBase['entry']>
-            & { [contextKey] : ResourceContext<Schema> };
+        type ItemResource = 
+            Merge<
+                ItemResourceT<S>,
+                Merge<
+                    ResourceComponents['methods'],
+                    ResourceComponents['resources']
+                >
+            >
+            & ResourceComponents['entry'];
         
-        const makeResource = (context : Context) : ItemResourceT => {
+        const makeResource = (context : Context) : ItemResource => {
             const { agent, options } = context;
             
             const isRoot = context.path.length === 0;
@@ -198,7 +193,7 @@ export const ItemResource =
                 store: isRoot ? [] : [label],
                 uri: isRoot ? '' : label,
             });
-            const spec : ItemResourceSpec<Schema> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
+            const spec : ItemResourceSpec<S> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
             
             // Make relative
             // TODO: allow the spec to override this and use absolute references instead
@@ -208,7 +203,7 @@ export const ItemResource =
             
             
             // Get methods
-            const methods = spec.methods as ResourceBase['methods'];
+            const methods = spec.methods as ResourceComponents['methods'];
             /*
             const methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
                 const result = method.apply(this, args);
@@ -224,22 +219,22 @@ export const ItemResource =
             
             // Get subresources
             const resources = ObjectUtil.mapValues(itemSpec.resources || {},
-                (resource : (ctx : Context) => Resource, resourceKey : string | number) => {
+                (resource : (ctx : Context) => Resource<Schema>, resourceKey : string | number) => {
                     const resourceContext = {
-                        agent: context.agent,
                         options: context.options,
-                        path: [...context.path, resourceKey],
-                        store: spec.store,
+                        path: [...context.path, String(resourceKey)],
                         uri: spec.uri,
+                        store: spec.store,
+                        agent: context.agent,
                     };
                     return resource(resourceContext);
                 }
-            ) as ResourceBase['resources'];
+            ) as ResourceComponents['resources'];
             
             let resource = {
                 ...methods,
                 ...resources,
-                [contextKey]: {
+                [resourceDef]: {
                     agent,
                     spec,
                     schema,
@@ -255,7 +250,7 @@ export const ItemResource =
                         });
                     },
                 },
-            } as unknown as ItemResourceT;
+            } as unknown as ItemResource;
             
             const entry = itemSpec.entry;
             if (typeof entry === 'function') {
@@ -318,5 +313,5 @@ const test = ItemResource(t.string, {
     }),
 })(testContext);
 
-const x1 : never = test('xyz').foo();
+const x1 : never = test('user42').foo();
 */

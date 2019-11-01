@@ -15,10 +15,9 @@ import { either } from 'fp-ts';
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
 import { AxiosResponse } from 'axios';
-import { Methods, Resources, Resource, ResourcePath, Agent, StorePath, URI, contextKey, Context } from './Resource.js';
-//import StorablePromise from './StorablePromise.js';
+import { ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
 
-import ItemResource, { ItemResourceT, ItemSchema, ItemResourceSpec, ResourceContext as ItemResourceContext } from './ItemResource.js';
+import ItemResource, { ItemResourceT, ItemSchema, ItemResourceSpec } from './ItemResource.js';
 
 /*
 export type CollectionSchema = unknown;
@@ -64,27 +63,25 @@ export const CollectionResource =
 export default CollectionResource;
 */
 
-type CollectionSchema = ItemSchema;
-type CollectionResourceSpec<Schema extends CollectionSchema> = ItemResourceSpec<Schema>;
+export type CollectionSchema = ItemSchema;
+export type CollectionResourceSpec<S extends CollectionSchema> = ItemResourceSpec<S>;
 
-type CollectionResourceT<Schema extends CollectionSchema> =
-    Resource<{}, {}, { <EntrySchema extends ItemSchema>(index : string) : ItemResourceT<EntrySchema> }>
-    & { [contextKey] : ItemResourceContext<Schema> };
+export type CollectionResourceT<S extends CollectionSchema> = ItemResourceT<S>;
 
 const collectionMethods = {
-    async list<Schema extends CollectionSchema>(this : CollectionResourceT<Schema>, params = {}) {
-        const { agent, spec, schema, schemaMethods } = this[contextKey];
+    async list<S extends CollectionSchema>(this : CollectionResourceT<S>, params = {}) {
+        const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
         const response = await agent.get(spec.uri, { params });
         return schemaMethods.decode(this, schemaMethods.parse(response));
     },
     
-    async post<Schema extends CollectionSchema>(this : CollectionResourceT<Schema>,
+    async post<S extends CollectionSchema>(this : CollectionResourceT<S>,
         instance : unknown, params = {}
     ) {
-        const { agent, spec, schema, schemaMethods } = this[contextKey];
+        const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
         
         const entryResource = this('[new]'); // FIXME
-        const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[contextKey];
+        const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[resourceDef];
         
         const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
         
@@ -94,11 +91,11 @@ const collectionMethods = {
 };
 
 export const CollectionResource = <
-        Schema extends CollectionSchema,
-        Spec extends Partial<CollectionResourceSpec<Schema>>
-    >(schema : Schema, collectionSpec : Spec = {} as Spec) => {
+        S extends CollectionSchema,
+        Spec extends Partial<CollectionResourceSpec<S>>
+    >(schema : S, collectionSpec : Spec = {} as Spec) => {
         // TODO: need to add the additional methods (like `list`) to this interface
-        type CollectionResourceT<Schema extends ItemSchema> = ItemResourceT<Schema>;
+        type CollectionResourceT<S extends ItemSchema> = ItemResourceT<S>;
         
         const collectionSpecProcessed = merge(
             {
@@ -109,7 +106,7 @@ export const CollectionResource = <
         
         const itemResource = ItemResource(schema, collectionSpecProcessed);
         
-        return itemResource as unknown as CollectionResourceT<Schema>;
+        return itemResource as unknown as CollectionResourceT<S>;
     };
 
 export default CollectionResource;
