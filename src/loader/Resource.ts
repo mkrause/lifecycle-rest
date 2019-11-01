@@ -4,13 +4,14 @@ import { AxiosInstance } from 'axios';
 import { Schema } from '../schema/Schema.js';
 
 
+export type Index = string;
+
 export type Options = {};
-export type ResourcePathStep = string | { index : unknown };
+export type ResourcePathStep = string | { index : Index };
 export type ResourcePath = Array<ResourcePathStep>;
 export type URI = string;
 export type StorePath = Array<ResourcePathStep>;
 export type Agent = AxiosInstance;
-
 
 export type Context = {
     options : Options, // Root-level options
@@ -36,3 +37,8 @@ export type ResourceDefinition<S extends Schema> = Context & {
 export const resourceDef = Symbol('lifecycle.resourceDefinition');
 
 export type Resource<S extends Schema> = { [resourceDef] : ResourceDefinition<S> };
+
+export type ResourceCreator<S extends Schema> = {
+    (context : Context) : Resource<S>,
+    schema : S,
+};

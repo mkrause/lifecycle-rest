@@ -14,8 +14,10 @@ import { either } from 'fp-ts';
 
 import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 
+import { Schema, DecodeError } from '../schema/Schema.js';
+
 import { AxiosResponse } from 'axios';
-import { ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
+import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
 
 import ItemResource, { ItemResourceT, ItemSchema, ItemResourceSpec } from './ItemResource.js';
 
@@ -66,7 +68,8 @@ export default CollectionResource;
 export type CollectionSchema = ItemSchema;
 export type CollectionResourceSpec<S extends CollectionSchema> = ItemResourceSpec<S>;
 
-export type CollectionResourceT<S extends CollectionSchema> = ItemResourceT<S>;
+export type CollectionResourceT<S extends CollectionSchema> = ItemResourceT<S>
+    & ((index : Index) => Resource<Schema>);
 
 const collectionMethods = {
     async list<S extends CollectionSchema>(this : CollectionResourceT<S>, params = {}) {

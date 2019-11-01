@@ -10,7 +10,7 @@ import { concatUri } from '../util/uri.js';
 import { Schema, DecodeError } from '../schema/Schema.js';
 
 import { AxiosResponse } from 'axios';
-import { ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
+import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator } from './Resource.js';
 
 // TEMP
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
@@ -29,9 +29,9 @@ export type ItemResourceSpec<S extends ItemSchema> = {
         [method : string] : (...args : unknown[]) => unknown,
     },
     resources : {
-        [resource : string] : (context : Context) => Resource<Schema>,
+        [resource : string] : ResourceCreator<Schema>,
     },
-    entry : (context : Context) => Resource<Schema>,
+    entry : ResourceCreator<Schema>,
 };
 
 
@@ -41,8 +41,7 @@ export type ItemResourceT<S extends ItemSchema> = Resource<S>
         [resourceDef] : {
             spec : {}, // XXX can put `ItemResource`-specific info in here
         },
-    }
-    & { (index : string) : Resource<Schema> };
+    };
 
 
 const schemaMethods = {
@@ -147,7 +146,7 @@ const itemDefaults = {
 export const ItemResource =
     <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
         schema : S, itemSpec : Spec = {} as Spec
-    ) => {
+    ) : ResourceCreator<S> => {
         // Make sure there's no `resourceDef` key included (should not be overridden)
         const itemSpecMethods = itemSpec['methods'] || {};
         const itemSpecResources = itemSpec['resources'] || {};
@@ -162,7 +161,7 @@ export const ItemResource =
         type ResourcesFromSpec<R extends ItemResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
         type EntryFromSpec<E extends ItemResourceSpec<S>['entry']> =
-            E extends (context : Context) => infer R ? { (index : string) : R } : never;
+            E extends (context : Context) => infer R ? { (index : Index) : R } : never;
         
         // The interface of the resource, split up into its base components
         type ResourceComponents = {
@@ -172,13 +171,10 @@ export const ItemResource =
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type ItemResource = 
-            Merge<
-                ItemResourceT<S>,
-                Merge<
-                    ResourceComponents['methods'],
-                    ResourceComponents['resources']
-                >
+        type ItemResource = ItemResourceT<S>
+            & Merge<
+                ResourceComponents['methods'],
+                ResourceComponents['resources']
             >
             & ResourceComponents['entry'];
         
@@ -193,7 +189,7 @@ export const ItemResource =
                 store: isRoot ? [] : [label],
                 uri: isRoot ? '' : label,
             });
-            const spec : ItemResourceSpec<S> = merge(itemDefaultsWithContext, itemSpec) as any; // FIXME
+            const spec : ItemResourceSpec<S> = merge(itemDefaultsWithContext, itemSpec) as ItemResourceSpec<S>;
             
             // Make relative
             // TODO: allow the spec to override this and use absolute references instead
@@ -255,7 +251,7 @@ export const ItemResource =
             const entry = itemSpec.entry;
             if (typeof entry === 'function') {
                 resource = Object.assign(
-                    (index : string) => {
+                    (index : Index) => {
                         const entryContext = {
                             options,
                             agent,
@@ -268,7 +264,6 @@ export const ItemResource =
                     resource
                 );
             }
-            
             
             return resource;
         };
