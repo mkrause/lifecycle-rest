@@ -42,3 +42,82 @@ export type ResourceCreator<S extends Schema> = {
     (context : Context) : Resource<S>,
     schema : S,
 };
+
+
+// Resource specifications
+
+import merge, { Merge } from '../util/merge.js';
+import * as ObjectUtil from '../util/ObjectUtil.js';
+import { concatUri } from '../util/uri.js';
+
+
+export type ResourceSpec<S extends Schema> = {
+    path : ResourcePath,
+    uri : URI,
+    store : StorePath,
+    methods : { // ThisType<Resource> &
+        [method : string] : Function, //(...args : unknown[]) => unknown,
+    },
+    resources : {
+        [resource : string] : ResourceCreator<Schema>,
+    },
+};
+
+// Instantiate the given partial spec to a complete spec, given context information
+export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, Spec extends Partial<SpecT>>(
+        context : Context,
+        specPartial : Spec,
+        defaults : ResourceSpec<S>,
+    ) => {
+        // Descriptive label based on the nearest parent identifier (or `null` if root)
+        const isRoot = context.path.length === 0;
+        const label = isRoot ? null : context.path[context.path.length - 1];
+        
+        // Add context-dependent defaults
+        const defaultsWithContext = merge(defaults, {
+            store: label === null ? defaults.store : [label],
+            uri: label === null ? defaults.uri : label,
+        }) as SpecT;
+        
+        // FIXME: the result of `merge` (using ts-toolbelt `Merge`) does not seem to be assignable to `SpecT` here
+        const spec = merge(defaultsWithContext, specPartial) as unknown as SpecT;
+        
+        // Make relative
+        // TODO: allow the spec to override this and use absolute references instead
+        spec.path = [...context.path, ...spec.path];
+        spec.store = [...context.store, ...spec.store];
+        spec.uri = concatUri([context.uri, spec.uri]);
+        
+        
+        /*
+        // Construct methods
+        spec.methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
+            const result = method.apply(this, args);
+            
+            if (result instanceof Promise) {
+                // @ts-ignore
+                result.storable = { location: spec.store, operation: 'put' };
+            }
+            
+            return result;
+        });
+        */
+        
+        // Instantiate subresources (with context)
+        const specInstantiated = Object.assign(spec, {
+            resources: ObjectUtil.mapValues(spec.resources,
+                (resource : ResourceCreator<Schema>, resourceKey : string | number) => {
+                    const resourceContext = {
+                        options: context.options,
+                        path: [...context.path, String(resourceKey)],
+                        uri: spec.uri,
+                        store: spec.store,
+                        agent: context.agent,
+                    };
+                    return resource(resourceContext);
+                }
+            ),
+        });
+        
+        return specInstantiated;
+    };

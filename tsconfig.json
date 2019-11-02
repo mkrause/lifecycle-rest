@@ -4,7 +4,9 @@
         "**/*.spec.ts",
     ],
     "include": [
-        "src/**/*",
+        // "src/**/*",
+        "src/loader/Resource.ts",
+        "src/loader/ItemResource.ts",
     ],
     "compilerOptions": {
         "noEmit": true,

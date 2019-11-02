@@ -1,80 +1,52 @@
 
-import axios from 'axios';
-// import * as t from 'io-ts';
-// import Fp, { either } from 'fp-ts';
-import { Loadable } from '@mkrause/lifecycle-loader';
-
-//import RestApi from './loader/RestApi.js';
-
-
-//const x : never = Loadable({ x: 42 });
-
-/*
-const agent = axios.create();
-
-const spec = RestApi.Item(null, {
-    methods: {
-        foo({ spec }) { return 42 as const; },
-    },
-});
-
-
-const usersApi = RestApi.Collection(null, {
-    entry: RestApi.Item(User, {
-        methods: {
-            getName() { return 'John' as const; },
-        },
-    }),
-});
-
-const api = RestApi(agent, RestApi.Item(null, {
-    methods: {
-        getVersion({ spec }) { return 1 as const; },
-    },
-    resources: {
-        config: RestApi.Item(null, {
-            methods: { getConfig() { return 'config' as const; } }
-        }),
-        users: usersApi,
-    },
-}));
-
-const test1 = api.getVersion();
-const test2 = api.config.get();
-const test3 = api.config.getConfig();
-const test4 = api.users('user1').getName();
-*/
-
-/*
-console.log('hello');
-
-
-const string = new t.Type<string, string, unknown>(
-  'string',
-  (input: unknown): input is string => typeof input === 'string',
-  // `t.success` and `t.failure` are helpers used to build `Either` instances
-  (input, context) => (typeof input === 'string' ? t.success(input) : t.failure(input, context)),
-  // `A` and `O` are the same, so `encode` is just the identity function
-  t.identity
-);
-
-const User = t.type({
-    name: t.string,
-});
-*/
-
-
-
-
-
-
-
-
 require('util').inspect.defaultOptions.depth = Infinity;
 
 import { either } from 'fp-ts';
 import * as t from 'io-ts';
 
+import ItemResource from './loader/ItemResource.js';
+
+
+const testContext = {
+    options : {},
+    path : [],
+    uri : '',
+    store : [],
+    agent : null as any,
+};
+const test = ItemResource(t.string, {
+    methods: {
+        foo() { return 42 as const; }
+    },
+    resources: {
+        res: ItemResource(t.string, {
+            methods: {
+                foo() { return 43 as const; }
+            },
+            resources: {
+                
+            },
+        }),
+    },
+    entry: ItemResource(t.string, {
+        methods: {
+            foo() { return 44 as const; }
+        },
+        resources: {
+            
+        },
+    }),
+})(testContext);
+
+//const x1 : never = test('user42').foo();
+
+
+
+
+
+
+
+/*
 type User = { name : string, score : number };
 
 const UserDecoder : t.Decoder<unknown, User> = {
@@ -96,3 +68,4 @@ console.log(t.string.decode(42));
 console.log('result', john);
 
 console.log(t.type({ x: t.type({ y: t.string }), a: t.string }).decode({ x: { y: 5 }, a: 7 }));
+*/

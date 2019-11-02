@@ -2,15 +2,15 @@
 import env from '../util/env.js';
 
 import $msg from 'message-tag';
+import $uri from 'uri-tag';
 import merge, { Merge } from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
-import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
 import { Schema, DecodeError } from '../schema/Schema.js';
 
 import { AxiosResponse } from 'axios';
-import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator } from './Resource.js';
+import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator, ResourceSpec, intantiateSpec } from './Resource.js';
 
 // TEMP
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
@@ -20,28 +20,12 @@ import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 
 export type ItemSchema = Schema;
 
-// Type of the spec used to define an ItemResource (after merging with defaults and context)
-export type ItemResourceSpec<S extends ItemSchema> = {
-    path : ResourcePath,
-    uri : URI,
-    store : StorePath,
-    methods : { // ThisType<Resource> &
-        [method : string] : (...args : unknown[]) => unknown,
-    },
-    resources : {
-        [resource : string] : ResourceCreator<Schema>,
-    },
-    entry : ResourceCreator<Schema>,
-};
+export type ItemResourceSpec<S extends ItemSchema> = ResourceSpec<S>;
 
 
-// Extension of `Resource` specialized to `ItemResource`
-export type ItemResourceT<S extends ItemSchema> = Resource<S>
-    & {
-        [resourceDef] : {
-            spec : {}, // Note: can put `ItemResource`-specific info in here
-        },
-    };
+// Generic collection resource type (i.e. as general as we can define it without knowing the actual spec)
+export type ItemResourceT<S extends ItemSchema> = Resource<S>;
+    //& { [resourceDef] : { spec : {} } }; // Can extend, if needed
 
 
 const schemaMethods = {
@@ -76,13 +60,13 @@ const schemaMethods = {
     },
     
     decode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, input : unknown) {
-        const { agent, spec, schema, schemaMethods } = resource[resourceDef];
+        const { agent, schema, schemaMethods } = resource[resourceDef];
         
         return schemaMethods.report(schema.decode(input));
     },
     
     encode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, instance : unknown) {
-        const { agent, spec, schema, schemaMethods } = resource[resourceDef];
+        const { agent, schema, schemaMethods } = resource[resourceDef];
         
         return schema.encode(instance);
     },
@@ -90,9 +74,8 @@ const schemaMethods = {
 
 const itemDefaults = {
     path: [],
-    store: [],
     uri: '',
-    resources: {},
+    store: [],
     methods: {
         async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) {
             const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
@@ -140,11 +123,11 @@ const itemDefaults = {
             return response.data;
         },
     },
+    resources: {},
 };
 
 
-export const ItemResource =
-    <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
+export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
         schema : S, itemSpec : Spec = {} as Spec
     ) : ResourceCreator<S> => {
         // Make sure there's no `resourceDef` key included (should not be overridden)
@@ -160,14 +143,11 @@ export const ItemResource =
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
         type ResourcesFromSpec<R extends ItemResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
-        type EntryFromSpec<E extends ItemResourceSpec<S>['entry']> =
-            E extends (context : Context) => infer R ? { (index : Index) : R } : never;
         
         // The interface of the resource, split up into its base components
         type ResourceComponents = {
             methods : Merge<(typeof itemDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
-            entry : Spec['entry'] extends object ? EntryFromSpec<Spec['entry']> : {},
         };
         
         // The interface of the resource, after merging the different components and adding context information
@@ -175,63 +155,20 @@ export const ItemResource =
             & Merge<
                 ResourceComponents['methods'],
                 ResourceComponents['resources']
-            >
-            & ResourceComponents['entry'];
+            >;
         
         const makeResource = (context : Context) : ItemResource => {
-            const { agent, options } = context;
+            const spec : ItemResourceSpec<S> = intantiateSpec(context, itemSpec, itemDefaults);
             
-            const isRoot = context.path.length === 0;
-            const label = isRoot ? null : context.path[context.path.length - 1];
-            
-            // Parse the item specification
-            const itemDefaultsWithContext = merge(itemDefaults, {
-                store: isRoot ? [] : [label],
-                uri: isRoot ? '' : label,
-            });
-            const spec : ItemResourceSpec<S> = merge(itemDefaultsWithContext, itemSpec) as ItemResourceSpec<S>;
-            
-            // Make relative
-            // TODO: allow the spec to override this and use absolute references instead
-            spec.path = [...context.path, ...spec.path];
-            spec.store = [...context.store, ...spec.store];
-            spec.uri = concatUri([context.uri, spec.uri]);
-            
-            
-            // Get methods
+            // Get methods and subresources
             const methods = spec.methods as ResourceComponents['methods'];
-            /*
-            const methods = ObjectUtil.mapValues(spec.methods, (method, methodName) => function(...args) {
-                const result = method.apply(this, args);
-                
-                if (result instanceof Promise) {
-                    // @ts-ignore
-                    result.storable = { location: spec.store, operation: 'put' };
-                }
-                
-                return result;
-            });
-            */
+            const resources = spec.resources as ResourceComponents['resources'];
             
-            // Get subresources
-            const resources = ObjectUtil.mapValues(itemSpec.resources || {},
-                (resource : (ctx : Context) => Resource<Schema>, resourceKey : string | number) => {
-                    const resourceContext = {
-                        options: context.options,
-                        path: [...context.path, String(resourceKey)],
-                        uri: spec.uri,
-                        store: spec.store,
-                        agent: context.agent,
-                    };
-                    return resource(resourceContext);
-                }
-            ) as ResourceComponents['resources'];
-            
-            let resource = {
+            const resource = {
                 ...methods,
                 ...resources,
                 [resourceDef]: {
-                    agent,
+                    agent: context.agent,
                     ...spec,
                     schema,
                     schemaMethods,
@@ -246,24 +183,7 @@ export const ItemResource =
                         });
                     },
                 },
-            } as unknown as ItemResource;
-            
-            const entry = itemSpec.entry;
-            if (typeof entry === 'function') {
-                resource = Object.assign(
-                    (index : Index) => {
-                        const entryContext = {
-                            options,
-                            agent,
-                            path: [...spec.path, { index }],
-                            store: [...spec.store, index],
-                            uri: concatUri([spec.uri, index]),
-                        };
-                        return entry(entryContext);
-                    },
-                    resource
-                );
-            }
+            } as unknown as ItemResource; // FIXME: complains about ts-toolbelt `Merge`
             
             return resource;
         };
@@ -274,39 +194,3 @@ export const ItemResource =
     };
 
 export default ItemResource;
-
-
-/*
-const testContext = {
-    options : {},
-    path : [],
-    uri : '',
-    store : [],
-    agent : null as any as Agent,
-};
-const test = ItemResource(t.string, {
-    methods: {
-        foo() { return 42 as const; }
-    },
-    resources: {
-        res: ItemResource(t.string, {
-            methods: {
-                foo() { return 43 as const; }
-            },
-            resources: {
-                
-            },
-        }),
-    },
-    entry: ItemResource(t.string, {
-        methods: {
-            foo() { return 44 as const; }
-        },
-        resources: {
-            
-        },
-    }),
-})(testContext);
-
-const x1 : never = test('user42').foo();
-*/

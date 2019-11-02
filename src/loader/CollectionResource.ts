@@ -17,99 +17,132 @@ import { status, Loadable, LoadableT } from '@mkrause/lifecycle-loader';
 import { Schema, DecodeError } from '../schema/Schema.js';
 
 import { AxiosResponse } from 'axios';
-import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef } from './Resource.js';
-
-import ItemResource, { ItemResourceT, ItemSchema, ItemResourceSpec } from './ItemResource.js';
-
-/*
-export type CollectionSchema = unknown;
-export type CollectionResourceSpec<Schema extends CollectionSchema> = {
-    path ?: ResourcePath,
-    store ?: StorePath,
-    uri ?: URI,
-    methods ?: {
-        get ?: (context : { spec : CollectionResourceSpec<Schema> }, params : {}) => Promise<unknown>,
-        put ?: (context : { spec : CollectionResourceSpec<Schema> }, item : Schema) => Promise<unknown>,
-        delete ?: (context : { spec : CollectionResourceSpec<Schema> }) => Promise<unknown>,
-        [method : string] : undefined | ((context : { spec : CollectionResourceSpec<Schema> }, ...args : any[]) => unknown),
-    },
-    resources ?: {
-        [resource : string] : (context : Context) => Resource,
-    },
-    entry : (context : Context) => Resource,
-};
+import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator, ResourceSpec, intantiateSpec } from './Resource.js';
 
 
-type MethodsFromSpec<S extends CollectionSchema, M extends Required<CollectionResourceSpec<S>>['methods']> =
-    { [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
-type ResourcesFromSpec<S extends CollectionSchema, R extends Required<CollectionResourceSpec<S>>['resources']> =
-    { [key in keyof R] : R[key] extends (context : Context) => infer Res ? Res : never };
-type EntryFromSpec<S extends CollectionSchema, E extends Required<CollectionResourceSpec<S>>['entry']> =
-    E extends (context : Context) => infer R ? R : never;
+export type CollSchema = Schema;
 
-type DefaultMethods = {
-    get : (params ?: {}) => Promise<unknown>,
-};
-
-export const CollectionResource =
-    <Schema extends CollectionSchema, Spec extends CollectionResourceSpec<Schema>>(schema : Schema, spec : Spec) =>
-    (context : Context) : Resource<
-        MethodsFromSpec<Schema, Spec['methods'] & {}> & DefaultMethods,
-        ResourcesFromSpec<Schema, Spec['resources'] & {}>,
-        { (index : ResourcePathStep) : EntryFromSpec<Schema, Spec['entry']> }
-    > => {
-        const { path, store, uri } = context;
-        return null as any;
+export type CollResourceSpec<S extends CollSchema> = ResourceSpec<S>
+    & {
+        entry : ResourceCreator<Schema>,
     };
 
-export default CollectionResource;
-*/
-
-export type CollectionSchema = ItemSchema;
-export type CollectionResourceSpec<S extends CollectionSchema> = ItemResourceSpec<S>;
-
-export type CollectionResourceT<S extends CollectionSchema> = ItemResourceT<S>
+// Generic collection resource type (i.e. as general as we can define it without knowing the actual spec)
+export type CollResourceT<S extends CollSchema> = ItemResourceT<S>
     & ((index : Index) => Resource<Schema>);
 
-const collectionMethods = {
-    async list<S extends CollectionSchema>(this : CollectionResourceT<S>, params = {}) {
-        const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-        const response = await agent.get(spec.uri, { params });
-        return schemaMethods.decode(this, schemaMethods.parse(response));
+
+const schemaMethods = null as any; // FIXME
+
+const collectionDefaults = {
+    path: [],
+    uri: '',
+    store: [],
+    methods: {
+        async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            const response = await agent.get(spec.uri, { params });
+            return schemaMethods.decode(this, schemaMethods.parse(response));
+        },
+        
+        async post<S extends CollSchema>(this : CollResourceT<S>,
+            instance : unknown, params = {}
+        ) {
+            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            
+            const entryResource = this('[new]'); // FIXME
+            const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[resourceDef];
+            
+            const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
+            
+            const response = await agent.post(spec.uri, instanceEncoded, { params });
+            return entrySchemaMethods.report(schema.decode(entrySchemaMethods.parse(response)));
+        },
     },
-    
-    async post<S extends CollectionSchema>(this : CollectionResourceT<S>,
-        instance : unknown, params = {}
-    ) {
-        const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-        
-        const entryResource = this('[new]'); // FIXME
-        const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[resourceDef];
-        
-        const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
-        
-        const response = await agent.post(spec.uri, instanceEncoded, { params });
-        return entrySchemaMethods.report(schema.decode(entrySchemaMethods.parse(response)));
-    },
+    resources: {},
 };
 
-export const CollectionResource = <
-        S extends CollectionSchema,
-        Spec extends Partial<CollectionResourceSpec<S>>
-    >(schema : S, collectionSpec : Spec = {} as Spec) => {
-        // TODO: need to add the additional methods (like `list`) to this interface
-        type CollectionResourceT<S extends ItemSchema> = ItemResourceT<S>;
+export const CollectionResource = <S extends CollSchema, Spec extends Partial<CollResourceSpec<S>>>(
+        schema : S, collSpec : Spec = {} as Spec
+    ) => {
+        // Make sure there's no `resourceDef` key included (should not be overridden)
+        const collSpecMethods = collSpec['methods'] || {};
+        const collSpecResources = collSpec['resources'] || {};
+        if (resourceDef in collSpecMethods || resourceDef in collSpecResources) {
+            throw new TypeError($msg`Cannot override resourceDef key`);
+        }
         
-        const collectionSpecProcessed = merge(
-            {
-                methods: collectionMethods,
-            },
-            collectionSpec,
-        );
+        // Utility types
+        type MethodsFromSpec<M extends CollResourceSpec<S>['methods']> =
+            //{ [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
+            { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
+        type ResourcesFromSpec<R extends CollResourceSpec<S>['resources']> =
+            { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
+        type EntryFromSpec<E extends CollResourceSpec<S>['entry']> =
+            E extends (context : Context) => infer R ? { (index : Index) : R } : never;
         
-        const itemResource = ItemResource(schema, collectionSpecProcessed);
+        // The interface of the resource, split up into its base components
+        type ResourceComponents = {
+            methods : Merge<(typeof collectionDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
+            resources : ResourcesFromSpec<Spec['resources'] & {}>,
+            entry : Spec['entry'] extends object ? EntryFromSpec<Spec['entry']> : {},
+        };
         
-        return itemResource as unknown as CollectionResourceT<S>;
+        // The interface of the resource, after merging the different components and adding context information
+        type CollResource = CollResourceT<S>
+            & Merge<
+                ResourceComponents['methods'],
+                ResourceComponents['resources']
+            >
+            & ResourceComponents['entry'];
+        
+        const makeResource = (context : Context) : CollResource => {
+            const spec : CollResourceSpec<S> = intantiateSpec(context, collSpec, collectionDefaults);
+            
+            // Get methods and subresources
+            const methods = spec.methods as ResourceComponents['methods'];
+            const resources = spec.resources as ResourceComponents['resources'];
+            
+            const entry = collSpec.entry;
+            const resource = Object.assign(
+                (index : Index) => {
+                    const entryContext = {
+                        options: context.option,
+                        agent: context.agent,
+                        path: [...spec.path, { index }],
+                        store: [...spec.store, index],
+                        uri: concatUri([spec.uri, index]),
+                    };
+                    return entry(entryContext);
+                },
+                methods,
+                resources,
+                {
+                    [resourceDef]: {
+                        agent: context.agent,
+                        ...spec,
+                        schema,
+                        schemaMethods,
+                        storable: (promise : Promise<unknown>) => {
+                            // TODO: make a `@storable` decorator that applies this function
+                            // Reason: using a wrapper function probably won't work inside an async function, because
+                            // we lose the promise in the `await` chain. But wrapping the entire async function in a
+                            // decorator should work.
+                            
+                            return Object.assign(promise, {
+                                storable: { location: spec.store, operation: 'put' },
+                            });
+                        },
+                    }
+                },
+            ) as unknown as CollResource<S>; // FIXME: complains about ts-toolbelt `Merge`
+            
+            return resource;
+        };
+        
+        return Object.assign(makeResource, {
+            schema, // Expose the schema on the constructor
+        });
     };
 
 export default CollectionResource;
