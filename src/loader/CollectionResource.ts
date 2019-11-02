@@ -28,11 +28,11 @@ export type CollResourceSpec<S extends CollSchema> = ResourceSpec<S>
     };
 
 // Generic collection resource type (i.e. as general as we can define it without knowing the actual spec)
-export type CollResourceT<S extends CollSchema> = ItemResourceT<S>
+export type CollResourceT<S extends CollSchema> = Resource<S>
     & ((index : Index) => Resource<Schema>);
 
 
-const schemaMethods = null as any; // FIXME
+const schemaMethods = {}; // TODO
 
 const collectionDefaults = {
     path: [],
