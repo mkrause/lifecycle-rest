@@ -130,16 +130,8 @@ const itemDefaults = {
 export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
         schema : S, itemSpec : Spec = {} as Spec
     ) : ResourceCreator<S> => {
-        // Make sure there's no `resourceDef` key included (should not be overridden)
-        const itemSpecMethods = itemSpec['methods'] || {};
-        const itemSpecResources = itemSpec['resources'] || {};
-        if (resourceDef in itemSpecMethods || resourceDef in itemSpecResources) {
-            throw new TypeError($msg`Cannot override resourceDef key`);
-        }
-        
         // Utility types
         type MethodsFromSpec<M extends ItemResourceSpec<S>['methods']> =
-            //{ [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
         type ResourcesFromSpec<R extends ItemResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
@@ -163,6 +155,11 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
             // Get methods and subresources
             const methods = spec.methods as ResourceComponents['methods'];
             const resources = spec.resources as ResourceComponents['resources'];
+            
+            // Make sure there's no `resourceDef` key included (should not be overridden)
+            if (resourceDef in methods || resourceDef in resources) {
+                throw new TypeError($msg`Cannot override resourceDef key`);
+            }
             
             const resource = {
                 ...methods,

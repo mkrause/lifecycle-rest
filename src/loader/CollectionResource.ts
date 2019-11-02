@@ -65,16 +65,8 @@ const collectionDefaults = {
 export const CollectionResource = <S extends CollSchema, Spec extends Partial<CollResourceSpec<S>>>(
         schema : S, collSpec : Spec = {} as Spec
     ) => {
-        // Make sure there's no `resourceDef` key included (should not be overridden)
-        const collSpecMethods = collSpec['methods'] || {};
-        const collSpecResources = collSpec['resources'] || {};
-        if (resourceDef in collSpecMethods || resourceDef in collSpecResources) {
-            throw new TypeError($msg`Cannot override resourceDef key`);
-        }
-        
         // Utility types
         type MethodsFromSpec<M extends CollResourceSpec<S>['methods']> =
-            //{ [key in keyof M] : M[key] extends (context : any, ...args : infer A) => infer R ? (...args : A) => R : never };
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };
         type ResourcesFromSpec<R extends CollResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
@@ -103,6 +95,11 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
             const methods = spec.methods as ResourceComponents['methods'];
             const resources = spec.resources as ResourceComponents['resources'];
             
+            // Make sure there's no `resourceDef` key included (should not be overridden)
+            if (resourceDef in methods || resourceDef in resources) {
+                throw new TypeError($msg`Cannot override resourceDef key`);
+            }
+            
             const entry = collSpec.entry;
             const resource = Object.assign(
                 (index : Index) => {
@@ -111,7 +108,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                         agent: context.agent,
                         path: [...spec.path, { index }],
                         store: [...spec.store, index],
-                        uri: concatUri([spec.uri, index]),
+                        uri: concatUri([spec.uri, String(index)]),
                     };
                     return entry(entryContext);
                 },
