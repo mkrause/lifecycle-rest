@@ -129,7 +129,7 @@ const itemDefaults = {
 
 export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemResourceSpec<S>>>(
         schema : S, itemSpec : Spec = {} as Spec
-    ) : ResourceCreator<S> => {
+    ) => {
         // Utility types
         type MethodsFromSpec<M extends ItemResourceSpec<S>['methods']> =
             { [key in keyof M] : M[key] extends (...args : infer A) => infer R ? (...args : A) => R : never };

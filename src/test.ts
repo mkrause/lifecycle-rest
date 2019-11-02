@@ -5,8 +5,10 @@ import { either } from 'fp-ts';
 import * as t from 'io-ts';
 
 import ItemResource from './loader/ItemResource.js';
+import CollectionResource from './loader/CollectionResource.js';
 
 
+/*
 const testContext = {
     options : {},
     path : [],
@@ -14,32 +16,37 @@ const testContext = {
     store : [],
     agent : null as any,
 };
-const test = ItemResource(t.string, {
+const api = CollectionResource(t.string, {
     methods: {
         foo() { return 42 as const; }
     },
     resources: {
-        res: ItemResource(t.string, {
+        item: ItemResource(t.string, {
             methods: {
                 foo() { return 43 as const; }
             },
-            resources: {
-                
+            resources: {},
+        }),
+        coll: CollectionResource(t.string, {
+            methods: {
+                foo() { return 44 as const; }
             },
+            resources: {},
         }),
     },
     entry: ItemResource(t.string, {
         methods: {
-            foo() { return 44 as const; }
+            foo() { return 45 as const; }
         },
-        resources: {
-            
-        },
+        resources: {},
     }),
 })(testContext);
 
-//const x1 : never = test('user42').foo();
-
+const test0 : never = { ...api };
+// const test1 : 42 = api.foo();
+// const test2 : 43 = api.res.foo();
+// const test3 : 44 = api('user42').foo();
+*/
 
 
 

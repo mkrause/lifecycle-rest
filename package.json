@@ -33,6 +33,7 @@
         "@babel/preset-typescript": "^7.6.0",
         "typescript": "^3.6.4",
         "@types/node": "^12.12.4",
+        "tsd": "^0.10.0",
         "mocha": "^6.2.2",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
@@ -54,7 +55,7 @@
         "http-status-codes": "^1.4.0",
         "axios": "^0.19.0",
         "@mkrause/lifecycle-loader": "^0.0.4",
-        "ts-toolbelt": "4.9.14",
+        "ts-toolbelt": "^4.9.31",
         "fp-ts": "^2.1.1",
         "io-ts": "^2.0.1"
     }

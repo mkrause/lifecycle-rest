@@ -56,7 +56,7 @@ export type ResourceSpec<S extends Schema> = {
     uri : URI,
     store : StorePath,
     methods : { // ThisType<Resource> &
-        [method : string] : Function, //(...args : unknown[]) => unknown,
+        [method : string] : (...args : any[]) => any,
     },
     resources : {
         [resource : string] : ResourceCreator<Schema>,

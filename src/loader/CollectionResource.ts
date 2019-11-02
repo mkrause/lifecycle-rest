@@ -60,6 +60,7 @@ const collectionDefaults = {
         },
     },
     resources: {},
+    entry: (index : Index) => { throw new TypeError($msg`Cannot construct entry`); },
 };
 
 export const CollectionResource = <S extends CollSchema, Spec extends Partial<CollResourceSpec<S>>>(
@@ -71,13 +72,13 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
         type ResourcesFromSpec<R extends CollResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
         type EntryFromSpec<E extends CollResourceSpec<S>['entry']> =
-            E extends (context : Context) => infer R ? { (index : Index) : R } : never;
+            E extends (context : Context) => infer R ? (index : Index) => R : never;
         
         // The interface of the resource, split up into its base components
         type ResourceComponents = {
             methods : Merge<(typeof collectionDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
-            entry : Spec['entry'] extends object ? EntryFromSpec<Spec['entry']> : {},
+            entry : EntryFromSpec<Spec['entry'] & {}>,
         };
         
         // The interface of the resource, after merging the different components and adding context information
@@ -88,30 +89,40 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
             >
             & ResourceComponents['entry'];
         
-        const makeResource = (context : Context) : CollResource => {
-            const spec : CollResourceSpec<S> = intantiateSpec(context, collSpec, collectionDefaults);
+        const makeResource = (context : Context) /*: CollResource*/ => {
+            return null as unknown as EntryFromSpec<Spec['entry'] & {}>;
+            
+            /*
+            type SpecInstantiated = Omit<CollResourceSpec<S>, 'methods' | 'resources' | 'entry'> & {
+                methods : ResourceComponents['methods'],
+                resources : ResourceComponents['resources'],
+                entry : ResourceCreator<S>, // Not yet processed
+            };
+            
+            const spec = intantiateSpec(context, collSpec, collectionDefaults) as SpecInstantiated;
             
             // Get methods and subresources
-            const methods = spec.methods as ResourceComponents['methods'];
-            const resources = spec.resources as ResourceComponents['resources'];
+            const methods = spec.methods; //as ResourceComponents['methods'];
+            const resources = spec.resources; //as ResourceComponents['resources'];
             
             // Make sure there's no `resourceDef` key included (should not be overridden)
             if (resourceDef in methods || resourceDef in resources) {
                 throw new TypeError($msg`Cannot override resourceDef key`);
             }
             
-            const entry = collSpec.entry;
-            const resource = Object.assign(
-                (index : Index) => {
-                    const entryContext = {
-                        options: context.option,
-                        agent: context.agent,
-                        path: [...spec.path, { index }],
-                        store: [...spec.store, index],
-                        uri: concatUri([spec.uri, String(index)]),
-                    };
-                    return entry(entryContext);
-                },
+            const entry = spec.entry;
+            const makeEntry = ((index : Index) => {
+                const entryContext = {
+                    options: context.options,
+                    agent: context.agent,
+                    path: [...spec.path, { index }],
+                    store: [...spec.store, index],
+                    uri: concatUri([spec.uri, String(index)]),
+                };
+                return entry(entryContext);
+            }) as ResourceComponents['entry'];
+            
+            const resource = Object.assign(makeEntry,
                 methods,
                 resources,
                 {
@@ -132,9 +143,10 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                         },
                     }
                 },
-            ) as unknown as CollResource<S>; // FIXME: complains about ts-toolbelt `Merge`
+            ) as unknown as CollResource; // FIXME: complains about ts-toolbelt `Merge`
             
             return resource;
+            */
         };
         
         return Object.assign(makeResource, {
@@ -143,3 +155,52 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
     };
 
 export default CollectionResource;
+
+
+
+const testContext = {
+    options : {},
+    path : [],
+    uri : '',
+    store : [],
+    agent : null as any,
+};
+const api0 = CollectionResource(t.string, {
+    methods: {
+        foo() { return 42 as const; },
+    },
+    resources: {
+        coll: null as unknown as {
+            schema : typeof t.string,
+            (context : Context) : { [resourceDef] : any, foo : () => 10 },
+        },
+    },
+    entry: null as unknown as {
+        schema : typeof t.string,
+        (context : Context) : { [resourceDef] : any, foo : () => 11 },
+    },
+})(testContext);
+/*
+const api = CollectionResource(t.string, {
+    methods: {
+        foo() { return 42 as const; }
+    },
+    resources: {
+        coll: CollectionResource(t.string, {
+            methods: {
+                foo() { return 44 as const; }
+            },
+            resources: {},
+        }),
+    },
+    entry: CollectionResource(t.string, {
+        methods: {
+            foo() { return 45 as const; }
+        },
+        resources: {},
+    }),
+})(testContext);
+*/
+
+// const test0 : (typeof api0) = null;
+const test0 : never = api0('foo').foo();

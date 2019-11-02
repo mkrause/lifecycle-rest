@@ -4,12 +4,11 @@
         "**/*.spec.ts",
     ],
     "include": [
-        // "src/**/*",
-        "src/loader/Resource.ts",
-        "src/loader/ItemResource.ts",
+        "src/**/*",
     ],
     "compilerOptions": {
         "noEmit": true,
+        "noErrorTruncation": true,
         "lib": ["es2018"],
         "allowJs": false,
         "strict": true,
