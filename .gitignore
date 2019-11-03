@@ -5,4 +5,5 @@
 # Project
 /lib-cjs/
 /lib-esm/
-/typings/
+/typings/*
+!/typings/index.test-d.ts

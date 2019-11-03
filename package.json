@@ -13,7 +13,7 @@
         "src/",
         "lib-cjs/",
         "lib-esm/",
-        "typings/"
+        "typings/index.d.ts"
     ],
     "scripts": {
         "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
