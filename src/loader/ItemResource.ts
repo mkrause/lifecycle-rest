@@ -166,10 +166,11 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
                 ...resources,
                 [resourceDef]: {
                     agent: context.agent,
+                    options: context.options,
                     ...spec,
                     schema,
                     schemaMethods,
-                    storable: (promise : Promise<unknown>) => {
+                    storable: (promise : Promise<any>) => {
                         // TODO: make a `@storable` decorator that applies this function
                         // Reason: using a wrapper function probably won't work inside an async function, because
                         // we lose the promise in the `await` chain. But wrapping the entire async function in a

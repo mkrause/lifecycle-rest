@@ -8,7 +8,6 @@ import ItemResource from './loader/ItemResource.js';
 import CollectionResource from './loader/CollectionResource.js';
 
 
-/*
 const testContext = {
     options : {},
     path : [],
@@ -16,7 +15,7 @@ const testContext = {
     store : [],
     agent : null as any,
 };
-const api = CollectionResource(t.string, {
+const api = ItemResource(t.string, {
     methods: {
         foo() { return 42 as const; }
     },
@@ -32,21 +31,21 @@ const api = CollectionResource(t.string, {
                 foo() { return 44 as const; }
             },
             resources: {},
+            entry: CollectionResource(t.string, {
+                methods: {
+                    foo() { return 45 as const; }
+                },
+                resources: {},
+            }),
         }),
     },
-    entry: ItemResource(t.string, {
-        methods: {
-            foo() { return 45 as const; }
-        },
-        resources: {},
-    }),
 })(testContext);
 
-const test0 : never = { ...api };
-// const test1 : 42 = api.foo();
-// const test2 : 43 = api.res.foo();
-// const test3 : 44 = api('user42').foo();
-*/
+//const test0 : null = { ...api };
+const test1 : 42 = api.foo();
+const test2 : 43 = api.item.foo();
+const test3 : 44 = api.coll.foo();
+const test4 : 45 = api.coll('user42').foo();
 
 
 

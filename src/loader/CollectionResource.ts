@@ -78,32 +78,29 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
         type ResourceComponents = {
             methods : Merge<(typeof collectionDefaults)['methods'], MethodsFromSpec<Spec['methods'] & {}>>,
             resources : ResourcesFromSpec<Spec['resources'] & {}>,
-            entry : EntryFromSpec<Spec['entry'] & {}>,
+            entry : Spec['entry'] extends Function ? EntryFromSpec<Spec['entry']> : {},
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type CollResource = CollResourceT<S>
-            & Merge<
-                ResourceComponents['methods'],
-                ResourceComponents['resources']
-            >
+        type CollResource = Resource<S>
+            & ResourceComponents['methods']
+            & ResourceComponents['resources']
             & ResourceComponents['entry'];
         
+        // return null as unknown as (context : Context) => CollResource;
+        
         const makeResource = (context : Context) /*: CollResource*/ => {
-            return null as unknown as EntryFromSpec<Spec['entry'] & {}>;
-            
-            /*
             type SpecInstantiated = Omit<CollResourceSpec<S>, 'methods' | 'resources' | 'entry'> & {
                 methods : ResourceComponents['methods'],
                 resources : ResourceComponents['resources'],
-                entry : ResourceCreator<S>, // Not yet processed
+                entry : Spec['entry'],
             };
             
             const spec = intantiateSpec(context, collSpec, collectionDefaults) as SpecInstantiated;
             
             // Get methods and subresources
-            const methods = spec.methods; //as ResourceComponents['methods'];
-            const resources = spec.resources; //as ResourceComponents['resources'];
+            const methods = spec.methods as ResourceComponents['methods'];
+            const resources = spec.resources as ResourceComponents['resources'];
             
             // Make sure there's no `resourceDef` key included (should not be overridden)
             if (resourceDef in methods || resourceDef in resources) {
@@ -119,7 +116,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                     store: [...spec.store, index],
                     uri: concatUri([spec.uri, String(index)]),
                 };
-                return entry(entryContext);
+                return (entry as any)(entryContext);
             }) as ResourceComponents['entry'];
             
             const resource = Object.assign(makeEntry,
@@ -128,10 +125,11 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                 {
                     [resourceDef]: {
                         agent: context.agent,
+                        options: context.options,
                         ...spec,
                         schema,
                         schemaMethods,
-                        storable: (promise : Promise<unknown>) => {
+                        storable: (promise : Promise<any>) => {
                             // TODO: make a `@storable` decorator that applies this function
                             // Reason: using a wrapper function probably won't work inside an async function, because
                             // we lose the promise in the `await` chain. But wrapping the entire async function in a
@@ -143,10 +141,9 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                         },
                     }
                 },
-            ) as unknown as CollResource; // FIXME: complains about ts-toolbelt `Merge`
+            ); //as unknown as CollResource; // FIXME: complains about ts-toolbelt `Merge`
             
             return resource;
-            */
         };
         
         return Object.assign(makeResource, {
@@ -157,7 +154,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
 export default CollectionResource;
 
 
-
+/*
 const testContext = {
     options : {},
     path : [],
@@ -200,7 +197,8 @@ const api = CollectionResource(t.string, {
         resources: {},
     }),
 })(testContext);
-*/
+* /
 
 // const test0 : (typeof api0) = null;
-const test0 : never = api0('foo').foo();
+const test0 : never = api0('foo');
+*/
