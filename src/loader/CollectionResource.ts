@@ -89,7 +89,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
         
         // return null as unknown as (context : Context) => CollResource;
         
-        const makeResource = (context : Context) /*: CollResource*/ => {
+        const makeResource = (context : Context) : CollResource => {
             type SpecInstantiated = Omit<CollResourceSpec<S>, 'methods' | 'resources' | 'entry'> & {
                 methods : ResourceComponents['methods'],
                 resources : ResourceComponents['resources'],
@@ -119,7 +119,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                 return (entry as any)(entryContext);
             }) as ResourceComponents['entry'];
             
-            const resource = Object.assign(makeEntry,
+            const resource : CollResource = Object.assign(makeEntry,
                 methods,
                 resources,
                 {
@@ -141,7 +141,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                         },
                     }
                 },
-            ); //as unknown as CollResource; // FIXME: complains about ts-toolbelt `Merge`
+            );
             
             return resource;
         };

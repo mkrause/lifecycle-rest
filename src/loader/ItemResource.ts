@@ -143,11 +143,9 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
         };
         
         // The interface of the resource, after merging the different components and adding context information
-        type ItemResource = ItemResourceT<S>
-            & Merge<
-                ResourceComponents['methods'],
-                ResourceComponents['resources']
-            >;
+        type ItemResource = Resource<S>
+            & ResourceComponents['methods']
+            & ResourceComponents['resources'];
         
         const makeResource = (context : Context) : ItemResource => {
             const spec : ItemResourceSpec<S> = intantiateSpec(context, itemSpec, itemDefaults);
@@ -161,7 +159,7 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
                 throw new TypeError($msg`Cannot override resourceDef key`);
             }
             
-            const resource = {
+            const resource : ItemResource = {
                 ...methods,
                 ...resources,
                 [resourceDef]: {
@@ -181,7 +179,7 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
                         });
                     },
                 },
-            } as unknown as ItemResource; // FIXME: complains about ts-toolbelt `Merge`
+            };
             
             return resource;
         };
