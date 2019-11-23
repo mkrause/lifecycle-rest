@@ -1,4 +1,4 @@
-
+/*
 import { expect } from 'chai';
 
 import $uri from 'uri-tag';
@@ -43,7 +43,7 @@ describe('redux reducer', () => {
             };
             //...
         });
-        */
+        * /
         
         it('should fail to update on a state which is null or undefined', () => {
             const action = {
@@ -165,3 +165,4 @@ describe('redux reducer', () => {
         it('TODO');
     });
 });
+*/
