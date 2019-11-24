@@ -1,4 +1,5 @@
 
+import $msg from 'message-tag';
 import { AxiosInstance } from 'axios';
 
 import { Schema } from '../schema/Schema.js';
@@ -63,6 +64,16 @@ export type ResourceSpec<S extends Schema> = {
     },
 };
 
+const stringFromLabel = (label : ResourcePathStep) => {
+    if (typeof label === 'string') {
+        return label;
+    } else if (typeof label === 'object' && label !== null && 'index' in label) {
+        return String(label.index);
+    } else {
+        throw new TypeError($msg`Unexpected label, given ${label}`);
+    }
+};
+
 // Instantiate the given partial spec to a complete spec, given context information
 export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, Spec extends Partial<SpecT>>(
         context : Context,
@@ -71,12 +82,12 @@ export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, 
     ) => {
         // Descriptive label based on the nearest parent identifier (or `null` if root)
         const isRoot = context.path.length === 0;
-        const label = isRoot ? null : context.path[context.path.length - 1];
+        const label : ResourcePathStep = isRoot ? null : context.path[context.path.length - 1];
         
         // Add context-dependent defaults
         const defaultsWithContext = merge(defaults, {
             store: label === null ? defaults.store : [label],
-            uri: label === null ? defaults.uri : label,
+            uri: label === null ? defaults.uri : stringFromLabel(label),
         }) as SpecT;
         
         // FIXME: the result of `merge` (using ts-toolbelt `Merge`) does not seem to be assignable to `SpecT` here

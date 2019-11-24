@@ -2,7 +2,7 @@
 // Take a list of uri path components, and concat them to a single uri path. 
 export const concatUri = (parts : string[]) => parts
     .filter(part => part !== '')
-    .map((part, index) => {
+    .map((part : string, index : number) => {
         let partTrimmed = part;
         partTrimmed = partTrimmed.replace(/[/]*$/, ''); // Remove trailing slashes
         

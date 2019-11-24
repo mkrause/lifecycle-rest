@@ -385,13 +385,13 @@ describe('ItemResource', () => {
         
         describe('method `delete`', () => {
             it('should not need to decode/encode', async () => {
-                assert(true); // Trivially true
+                assert(true); // Nothing to test
             });
         });
         
         describe('method `post`', () => {
             it('should not need to decode/encode', async () => {
-                assert(true); // Trivially true
+                assert(true); // Nothing to test
             });
         });
     });
