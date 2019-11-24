@@ -15,9 +15,9 @@ Simple mock REST API endpoint
 // indicating that the state update was successful. (Use `Object.freeze()` to enforce.)
 
 export const users = Object.freeze({
-    alice: { name: 'Alice' },
-    bob: { name: 'Bob' },
-    john: { name: 'John' },
+    alice: { name: 'Alice', score: 101 },
+    bob: { name: 'Bob', score: 7 },
+    john: { name: 'John', score: 42 },
 });
 
 const handleRequest = async request => {

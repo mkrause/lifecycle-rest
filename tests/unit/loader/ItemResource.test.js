@@ -1,5 +1,5 @@
 
-import chai, { expect } from 'chai';
+import chai, { assert, expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import chaiMatchPattern from 'chai-match-pattern';
 import sinon from 'sinon';
@@ -144,16 +144,16 @@ describe('ItemResource', () => {
     });
     
     
-    const contextWithAgent = {
-        agent: agentMock,
-        options: {},
-        path: [],
-        store: [],
-        uri: '',
-    };
-    
-    describe('without schema', () => {
-        // Test
+    // Test the default methods (without doing any real schema encoding/decoding yet, i.e. use `Unknown`)
+    describe('default methods (with trivial schema)', () => {
+        // Use `agentMock` as the agent, see `tests/resources/agent_mock.js` for the definition
+        const contextWithAgent = {
+            agent: agentMock,
+            options: {},
+            path: [],
+            uri: '',
+            store: [],
+        };
         
         const apiStandard = ItemResource(Unknown, {
             uri: '/api',
@@ -181,7 +181,7 @@ describe('ItemResource', () => {
                 expect(result1).to.deep.equal({ version: 42 });
                 
                 // Should be able to pass query parameters
-                const result2 = await api.greet.get({ name: 'Alice' });
+                const result2 = await api.greet.get({ name: 'Alice', score: 101 });
                 expect(result2).to.equal('Hello Alice');
             });
         });
@@ -200,12 +200,15 @@ describe('ItemResource', () => {
         
         describe('method `patch`', () => {
             it('should be supported as default method', async () => {
+                // Partial update
                 const userUpdated = await apiStandard.users['alice'].patch({
                     name: 'Alice!',
                 });
                 
+                // Result should only have the partial update applied
                 expect(userUpdated).to.deep.equal({
                     name: 'Alice!',
+                    score: 101,
                 });
             });
         });
@@ -227,7 +230,19 @@ describe('ItemResource', () => {
         });
     });
     
-    describe('with schema', () => {
+    describe('schema decoding/encoding', () => {
+        // Schemas
+        
+        // Util
+        const orThrow = decodeResult => {
+            if ('left' in decodeResult) {
+                throw new Error('Decode failed');
+            } else {
+                return decodeResult.right;
+            }
+        };
+        
+        // Note: manually create a new `t.Type` (rather than using existing primitives)
         const ApiVersionSchema = new t.Type(
             'ApiVersion',
             instance => Object.prototype.hasOwnProperty.call(instance, '$test'),
@@ -247,12 +262,24 @@ describe('ItemResource', () => {
         
         const UserSchema = t.type({
             name: t.string,
+            score: t.number,
         });
         
+        // Create two versions of user collection schemas: one array (with ID as prop), one map (key as ID)
         const UserKey = t.string;
         const UsersListSchema = t.array(t.intersection([t.type({ id: UserKey }), UserSchema]));
-        const UsersMapSchema = t.record(t.string, UserSchema);
+        const UsersMapSchema = t.record(UserKey, UserSchema);
         
+        
+        const contextWithAgent = {
+            agent: agentMock,
+            options: {},
+            path: [],
+            store: [],
+            uri: '',
+        };
+        
+        // Define an API with the actual schemas
         const api = ItemResource(ApiVersionSchema, {
             uri: '/api',
             resources: {
@@ -292,7 +319,7 @@ describe('ItemResource', () => {
             it('should decode the response using the given schema (schema: item)', async () => {
                 // Test successful decode
                 const result1 = await api.users['alice'].get();
-                expect(result1).to.deep.equal({ name: 'Alice' });
+                expect(result1).to.deep.equal({ name: 'Alice', score: 101 });
                 
                 // Test failed decode
                 expect(
@@ -304,86 +331,72 @@ describe('ItemResource', () => {
             });
             
             it('should decode the response using the given schema (schema: collection)', async () => {
-                // Test successful decode
+                // Test successful encode
                 const result1 = await api.users.get();
                 expect(result1).to.deep.equal({
-                    'alice': { name: 'Alice' },
-                    'bob': { name: 'Bob' },
-                    'john': { name: 'John' },
+                    'alice': { name: 'Alice', score: 101 },
+                    'bob': { name: 'Bob', score: 7 },
+                    'john': { name: 'John', score: 42 },
                 });
                 
                 const result2 = await api.usersAsList.get({ format: 'list' });
                 expect(result2).to.deep.equal([
-                    { id: 'alice', name: 'Alice' },
-                    { id: 'bob', name: 'Bob' },
-                    { id: 'john', name: 'John' },
+                    { id: 'alice', name: 'Alice', score: 101 },
+                    { id: 'bob', name: 'Bob', score: 7 },
+                    { id: 'john', name: 'John', score: 42 },
                 ]);
                 
-                // Test failed decode
-                // TODO
+                // TODO: test failed decode
+            });
+        });
+        
+        describe('method `put`', () => {
+            it('should encode the request/decode the response using the given schema', async () => {
+                const aliceUpdated = orThrow(UserSchema.decode({
+                    name: 'Alice!',
+                    score: 102,
+                }));
+                
+                const result = await api.users['alice'].put(aliceUpdated);
+                expect(result).to.deep.equal(aliceUpdated);
+                
+                // TODO: test failed decode
+            });
+        });
+        
+        describe('method `patch`', () => {
+            it('should encode the request/decode the response using the given schema', async () => {
+                const PartialUserSchema = t.partial(UserSchema.props);
+                
+                // Partial update
+                const aliceUpdated = orThrow(PartialUserSchema.decode({
+                    score: 102,
+                }));
+                
+                const result = await api.users['alice'].patch(aliceUpdated);
+                expect(result).to.deep.equal({
+                    name: 'Alice', // Unchanged
+                    score: 102, // Updated
+                });
+                
+                // TODO: test failed decode
+            });
+        });
+        
+        describe('method `delete`', () => {
+            it('should not need to decode/encode', async () => {
+                assert(true); // Trivially true
+            });
+        });
+        
+        describe('method `post`', () => {
+            it('should not need to decode/encode', async () => {
+                assert(true); // Trivially true
             });
         });
     });
     
     /*
-    class User {
-        static instantiate() {
-            return {
-                name: null,
-            };
-        }
-        
-        static decode(instanceEncoded) {
-            return instanceEncoded;
-        }
-        
-        static encode(instance) {
-            return instance;
-        }
-    }
-    
-    it('should support the method get()', async () => {
-        const api = ItemResource(SimpleItem, {
-            store: ['app'],
-            uri: '/api',
-            resources: {
-                user: ItemResource(User, {
-                    store: ['user'],
-                    uri: 'user',
-                }),
-            },
-        })(contextTrivial);
-        
-        const userPromise = api.user.get();
-        
-        expect(userPromise).to.be.an.instanceOf(StorablePromise);
-        
-        const user = await userPromise;
-        
-        expect(user).to.deep.equal({ name: 'Alice' });
-    });
-    
-    it('should support the method put()', async () => {
-        const api = ItemResource(SimpleItem, {
-            store: ['app'],
-            uri: '/api',
-            resources: {
-                user: ItemResource(User, {
-                    store: ['user'],
-                    uri: 'user',
-                }),
-            },
-        })(contextTrivial);
-        
-        const userPromise = api.user.put({ name: 'Alice' });
-        
-        expect(userPromise).to.be.an.instanceOf(StorablePromise);
-        
-        const user = await userPromise;
-        
-        expect(user).to.deep.equal({ user_id: 42, name: 'Alice' });
-    });
-    
     it('should support custom methods — returning a storable promise', async () => {
         const api = ItemResource(SimpleItem, {
             store: ['app'],
