@@ -109,7 +109,7 @@ export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, 
                 (resource : ResourceCreator<Schema>, resourceKey : string | number) => {
                     const resourceContext = {
                         options: context.options,
-                        path: [...context.path, String(resourceKey)],
+                        path: [...spec.path, String(resourceKey)],
                         uri: spec.uri,
                         store: spec.store,
                         agent: context.agent,
