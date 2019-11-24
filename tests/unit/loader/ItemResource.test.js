@@ -28,96 +28,119 @@ chai.use(chaiAsPromised);
 chai.use(chaiMatchPattern);
 
 describe('ItemResource', () => {
-    const context = {
+    const contextTrivial = {
         agent: createAgent({
             adapter: async request => { throw new Error(`Not supported`); },
         }),
         options: {},
         path: [],
-        store: [],
         uri: '',
+        store: [],
     };
     
     it('should have sensible defaults', () => {
-        const api = ItemResource(Unknown)(context);
+        const resourceCreator = ItemResource(Unknown);
+        const resource = resourceCreator(contextTrivial);
         
-        expect(api).property(resourceDef).nested.property('store').to.deep.equal([]);
-        expect(api).property(resourceDef).nested.property('uri').to.deep.equal('');
+        // The resource creator should expose its schema
+        expect(resourceCreator).property('schema').to.equal(Unknown);
+        
+        // The resource should have a private symbol `resourceDef` exposing its internal definition
+        expect(resource).property(resourceDef).property('path').to.deep.equal([]);
+        expect(resource).property(resourceDef).property('store').to.deep.equal([]);
+        expect(resource).property(resourceDef).property('uri').to.deep.equal('');
     });
     
-    it('should allow customization', () => {
-        const api = ItemResource(Unknown, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
-        })(context);
+    it('should allow configuration of the `path`', () => {
+        const resource1 = ItemResource(Unknown, { path: [] })(contextTrivial);
+        const resource2 = ItemResource(Unknown, { path: ['x'] })(contextTrivial);
         
-        expect(api).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar']);
-        expect(api).property(resourceDef).nested.property('uri').to.equal('x/y');
+        // With non-empty context `path`
+        const resource3 = ItemResource(Unknown, { path: ['y', 'z'] })({ ...contextTrivial, path: ['x'] });
+        
+        expect(resource1).property(resourceDef).property('path').to.deep.equal([]);
+        expect(resource2).property(resourceDef).property('path').to.deep.equal(['x']);
+        expect(resource3).property(resourceDef).property('path').to.deep.equal(['x', 'y', 'z']);
+    });
+    
+    it('should allow configuration of the `uri`', () => {
+        const resource1 = ItemResource(Unknown, { uri: '' })(contextTrivial);
+        const resource2 = ItemResource(Unknown, { uri: 'x' })(contextTrivial);
+        
+        // With non-empty context `uri`
+        const resource3 = ItemResource(Unknown, { uri: 'y/z' })({ ...contextTrivial, uri: '/x' });
+        
+        // Should properly handle relative paths, slashes, etc. when concatenating
+        const resource4 = ItemResource(Unknown, { uri: '/y/z//' })({ ...contextTrivial, uri: '/x/' });
+        
+        expect(resource1).property(resourceDef).property('uri').to.deep.equal('');
+        expect(resource2).property(resourceDef).property('uri').to.deep.equal('x');
+        expect(resource3).property(resourceDef).property('uri').to.deep.equal('/x/y/z');
+        expect(resource4).property(resourceDef).property('uri').to.deep.equal('/x/y/z');
+    });
+    
+    it('should allow configuration of the `store`', () => {
+        const resource1 = ItemResource(Unknown, { store: [] })(contextTrivial);
+        const resource2 = ItemResource(Unknown, { store: ['x'] })(contextTrivial);
+        
+        // With non-empty context `store`
+        const resource3 = ItemResource(Unknown, { store: ['y', 'z'] })({ ...contextTrivial, store: ['x'] });
+        
+        expect(resource1).property(resourceDef).property('store').to.deep.equal([]);
+        expect(resource2).property(resourceDef).property('store').to.deep.equal(['x']);
+        expect(resource3).property(resourceDef).property('store').to.deep.equal(['x', 'y', 'z']);
     });
     
     it('should allow definition of methods', () => {
         const methodMock = sinon.stub().callsFake(name => `Hello ${name}`);
         
-        const api = ItemResource(Unknown, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
+        const resource = ItemResource(Unknown, {
             methods: {
                 greet: methodMock,
             },
-        })(context);
+        })(contextTrivial);
         
-        expect(api).to.have.property('greet');
+        expect(resource).to.have.property('greet').to.be.a('function');
         
-        const result = api.greet('Alice');
+        const result = resource.greet('Alice');
         
         expect(result).to.equal('Hello Alice');
-        
         sinon.assert.calledOnce(methodMock);
-        
-        // TODO
-        // sinon.assert.calledOn(methodMock, api._spec); // `this` should be the spec
-        // sinon.assert.calledWith(methodMock, sinon.match.object, sinon.match('Alice'));
-        // sinon.assert.calledWith(methodMock, sinon.match.has('context', sinon.match(context)));
-        // sinon.assert.calledWith(methodMock, sinon.match.has('agent', sinon.match.same(context.agent)));
-        // sinon.assert.calledWith(methodMock, sinon.match.has('schema', sinon.match.same(Unknown)));
-        // sinon.assert.calledWith(methodMock, sinon.match.has('spec', sinon.match({
-        //     store: ['foo', 'bar'],
-        //     uri: 'x/y',
-        // })));
         sinon.assert.calledWith(methodMock, 'Alice');
+        sinon.assert.calledOn(methodMock, resource); // `this` should be the resource
     });
     
     it('should allow definition of subresources', () => {
-        const api = ItemResource(Unknown, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
+        const resource = ItemResource(Unknown, {
             resources: {
-                baz: ItemResource(Unknown),
+                foo: ItemResource(Unknown),
             },
-        })(context);
+        })(contextTrivial);
         
-        expect(api).to.have.property('baz');
-        
-        expect(api.baz).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).property(resourceDef).nested.property('uri').to.equal('x/y/baz');
+        expect(resource).to.have.property('foo').to.be.an('object');
     });
     
-    it('should use relative behavior by default for subresources', () => {
-        const api = ItemResource(Unknown, {
-            store: ['foo', 'bar'],
-            uri: 'x/y',
+    it('should use sensible defaults for subresources', () => {
+        const context = {
+            ...contextTrivial,
+            path: ['x'],
+            uri: '/x',
+            store: ['x'],
+        };
+        
+        const resource = ItemResource(Unknown, {
+            path: ['y'],
+            uri: 'y',
+            store: ['y'],
             resources: {
-                baz: ItemResource(Unknown, {
-                    store: ['baz'],
-                    uri: 'z',
-                }),
+                z: ItemResource(Unknown),
             },
         })(context);
         
-        expect(api).to.have.property('baz');
-        
-        expect(api.baz).property(resourceDef).nested.property('store').to.deep.equal(['foo', 'bar', 'baz']);
-        expect(api.baz).property(resourceDef).nested.property('uri').to.equal('x/y/z');
+        // Subresources should use their key as the default label (in this case, `z`)
+        expect(resource.z).property(resourceDef).property('path').to.deep.equal(['x', 'y', 'z']);
+        expect(resource.z).property(resourceDef).property('uri').to.equal('/x/y/z');
+        expect(resource.z).property(resourceDef).property('store').to.deep.equal(['x', 'y', 'z']);
     });
     
     
@@ -329,7 +352,7 @@ describe('ItemResource', () => {
                     uri: 'user',
                 }),
             },
-        })(context);
+        })(contextTrivial);
         
         const userPromise = api.user.get();
         
@@ -350,7 +373,7 @@ describe('ItemResource', () => {
                     uri: 'user',
                 }),
             },
-        })(context);
+        })(contextTrivial);
         
         const userPromise = api.user.put({ name: 'Alice' });
         
@@ -381,7 +404,7 @@ describe('ItemResource', () => {
                     },
                 }),
             },
-        })(context);
+        })(contextTrivial);
         
         const userPromise = api.user.customGet({ name: 'Alice' });
         
@@ -407,7 +430,7 @@ describe('ItemResource', () => {
                     },
                 }),
             },
-        })(context);
+        })(contextTrivial);
         
         const userPromise = api.user.customGet({ name: 'Alice' });
         
@@ -454,7 +477,7 @@ describe('ItemResource', () => {
                     },
                 }),
             },
-        })(context);
+        })(contextTrivial);
         
         const resultPromise = api.user.query({ name: 'Alice' });
         
