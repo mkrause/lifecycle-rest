@@ -80,9 +80,11 @@ export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, 
         specPartial : Spec,
         defaults : ResourceSpec<S>,
     ) => {
+        type Label = null | ResourcePathStep;
+        
         // Descriptive label based on the nearest parent identifier (or `null` if root)
         const isRoot = context.path.length === 0;
-        const label : ResourcePathStep = isRoot ? null : context.path[context.path.length - 1];
+        const label : Label = isRoot ? null : context.path[context.path.length - 1];
         
         // Add context-dependent defaults
         const defaultsWithContext = merge(defaults, {
