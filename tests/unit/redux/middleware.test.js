@@ -1,51 +1,22 @@
-/*
+
 import { expect } from 'chai';
 import sinon from 'sinon';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
-import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
+//import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
 import createAgent from '../../../lib-esm/agent.js';
 import RestApi from '../../../lib-esm/loader/RestApi.js';
-import createLifecycleMiddleware from '../../../lib-esm/redux/middleware.js';
+//import createLifecycleMiddleware from '../../../lib-esm/redux/middleware.js';
 
 
 describe('redux middleware', () => {
     const agentMock = createAgent({
-        adapter: request => {
-            const { method, baseUrl, url } = request;
-            
-            if (url === '/users') {
-                // Simulate an async request
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve({
-                            data: [
-                                { user_id: 'user42', name: 'John' },
-                                { user_id: 'user43', name: 'Alice' },
-                            ],
-                        });
-                    }, 0);
-                });
-            } else {
-                throw new Error($msg`Unknown route ${url}`);
-            }
-        },
+        adapter: async request => { throw new Error(`Not supported`); },
     });
-    
-    class UsersCollection {
-        static decode(instanceEncoded) {
-            return instanceEncoded.reduce(
-                (acc, item) => {
-                    return { ...acc, [item.user_id]: item };
-                },
-                {}
-            );
-        }
-    }
     
     // const reducers = [
     //     (state, action) => {
@@ -87,4 +58,3 @@ describe('redux middleware', () => {
         });
     });
 });
-*/

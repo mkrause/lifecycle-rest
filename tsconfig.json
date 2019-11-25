@@ -9,7 +9,8 @@
     "compilerOptions": {
         "noEmit": true,
         "noErrorTruncation": true,
-        "lib": ["es2018"],
+        "esModuleInterop": true,
+        "lib": ["es2019"],
         "allowJs": false,
         "strict": true,
         "noImplicitThis": true,

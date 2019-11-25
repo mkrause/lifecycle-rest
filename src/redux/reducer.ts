@@ -1,3 +1,4 @@
+// @ts-nocheck
 
 import match from 'case-match';
 import $msg from 'message-tag';

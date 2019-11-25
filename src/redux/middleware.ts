@@ -4,18 +4,23 @@ import merge from '../util/merge.js';
 
 import { status, LoadablePromise } from '@mkrause/lifecycle-loader';
 
-import StorablePromise from '../loader/StorablePromise.js';
+//import StorablePromise from '../loader/StorablePromise.js';
 
 
-const locationToString = location => {
+const locationToString = (location : string[]) => {
     return location.join('.');
 };
 
-const configDefault = {
+type Config = {
+    prefix ?: string,
+};
+const configDefault : Config = {
     prefix: 'lifecycle',
 };
 
-export default (_config = {}) => {
+const isLifecycleAction = Symbol('lifecycle.action');
+
+export default (_config : Config = {}) => {
     const config = merge(configDefault, _config);
     
     return store => next => action => {
@@ -30,7 +35,13 @@ export default (_config = {}) => {
         
         const requestId = uuid();
         
+        
+        // Convert the given promise to a series of actions:
+        // - loading
+        // - ready OR failed
+        
         store.dispatch({
+            [isLifecycleAction]: true,
             type: `${actionType}:loading`,
             path: storableSpec.location,
             state: 'loading',
@@ -42,6 +53,7 @@ export default (_config = {}) => {
             .then(
                 result => {
                     store.dispatch({
+                        [isLifecycleAction]: true,
                         type: `${actionType}:ready`,
                         path: storableSpec.location,
                         state: 'ready',
@@ -51,6 +63,7 @@ export default (_config = {}) => {
                 },
                 reason => {
                     store.dispatch({
+                        [isLifecycleAction]: true,
                         type: `${actionType}:failed`,
                         path: storableSpec.location,
                         state: 'failed',
