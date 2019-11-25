@@ -77,51 +77,55 @@ const itemDefaults = {
     uri: '',
     store: [],
     methods: {
-        async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) {
+        async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
             const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             const response = await agent.head(spec.uri, { params });
             return response;
         },
         
-        async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) {
+        async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
             const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
             return schemaMethods.decode(this, schemaMethods.parse(response));
         },
         
-        async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {}) {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-            
-            const instanceEncoded = schemaMethods.encode(this, instance);
-            
-            const response = await agent.put(spec.uri, instanceEncoded, { params });
-            return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
-        },
+        async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+            : Promise<t.TypeOf<S>> {
+                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                
+                const instanceEncoded = schemaMethods.encode(this, instance);
+                
+                const response = await agent.put(spec.uri, instanceEncoded, { params });
+                return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
+            },
         
-        async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {}) {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-            
-            const schemaPartial = schemaMethods.partial(schema);
-            
-            const instanceEncoded = schema.encode(instance);
-            
-            const response = await agent.patch(spec.uri, instanceEncoded, { params });
-            return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
-        },
+        async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+            : Promise<t.TypeOf<S>> {
+                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                
+                const schemaPartial = schemaMethods.partial(schema);
+                
+                const instanceEncoded = schema.encode(instance);
+                
+                const response = await agent.patch(spec.uri, instanceEncoded, { params });
+                return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
+            },
         
-        async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {}) {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-            
-            const response = await agent.delete(spec.uri, { params });
-            return response.data;
-        },
+        async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
+            : Promise<void> {
+                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                
+                const response = await agent.delete(spec.uri, { params });
+                return response.data;
+            },
         
-        async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {}) {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
-            
-            const response = await agent.post(spec.uri, { params });
-            return response.data;
-        },
+        async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
+            : Promise<unknown> {
+                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                
+                const response = await agent.post(spec.uri, { params });
+                return response.data;
+            },
     },
     resources: {},
 };

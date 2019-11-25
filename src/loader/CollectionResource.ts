@@ -39,7 +39,7 @@ const collectionDefaults = {
     uri: '',
     store: [],
     methods: {
-        async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) {
+        async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
             const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
             return schemaMethods.decode(this, schemaMethods.parse(response));
@@ -56,7 +56,11 @@ const collectionDefaults = {
             const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
             
             const response = await agent.post(spec.uri, instanceEncoded, { params });
-            return entrySchemaMethods.report(schema.decode(entrySchemaMethods.parse(response)));
+            const entryResult : t.TypeOf<typeof entrySchema> = entrySchemaMethods.report(
+                schema.decode(entrySchemaMethods.parse(response))
+            );
+            
+            return entryResult;
         },
     },
     resources: {},
