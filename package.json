@@ -44,6 +44,9 @@
     "peerDependencies": {
         "redux": "^4.0.4"
     },
+    "//": [
+        "Pinned ts-toolbelt to 4.10.20 due to bug in library ('definitions conflict')"
+    ],
     "dependencies": {
         "uuid": "^3.3.3",
         "case-match": "^2.0.0",
@@ -55,7 +58,7 @@
         "http-status-codes": "^1.4.0",
         "axios": "^0.19.0",
         "@mkrause/lifecycle-loader": "^0.0.5",
-        "ts-toolbelt": "^4.10.21",
+        "ts-toolbelt": "4.10.20",
         "fp-ts": "^2.1.2",
         "io-ts": "^2.0.1"
     }
