@@ -2,12 +2,13 @@
 import uuid from 'uuid';
 import merge from '../util/merge.js';
 
-import { status, LoadablePromise } from '@mkrause/lifecycle-loader';
+//import { status, LoadablePromise } from '@mkrause/lifecycle-loader';
+import makeStorable, { isStorable, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
 
-//import StorablePromise from '../loader/StorablePromise.js';
+import { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
 
 
-const locationToString = (location : string[]) => {
+const locationToString = (location : LocationStep[]) => {
     return location.join('.');
 };
 
@@ -18,16 +19,18 @@ const configDefault : Config = {
     prefix: 'lifecycle',
 };
 
-const isLifecycleAction = Symbol('lifecycle.action');
+export const isLifecycleAction = Symbol('lifecycle.action');
 
 export default (_config : Config = {}) => {
     const config = merge(configDefault, _config);
     
-    return store => next => action => {
+    return (store : Store) => (next : ReduxDispatch<ReduxAnyAction>) => (action : ReduxAnyAction) => {
         // Only handle actions that are of type StorablePromise
-        if (!(action instanceof StorablePromise)) {
+        if (!isStorable(action)) {
             return next(action);
         }
+        
+        const storablePromise = action;
         
         const storableSpec = action.spec;
         
@@ -41,19 +44,19 @@ export default (_config : Config = {}) => {
         // - ready OR failed
         
         store.dispatch({
-            [isLifecycleAction]: true,
+            [isLifecycleAction]: null,
             type: `${actionType}:loading`,
             path: storableSpec.location,
             state: 'loading',
             request: requestId,
-            item: action.item, // TODO: apply accessor?
+            //item: action.item, // TODO: apply accessor?
         });
         
         action
             .then(
                 result => {
                     store.dispatch({
-                        [isLifecycleAction]: true,
+                        [isLifecycleAction]: null,
                         type: `${actionType}:ready`,
                         path: storableSpec.location,
                         state: 'ready',
@@ -63,7 +66,7 @@ export default (_config : Config = {}) => {
                 },
                 reason => {
                     store.dispatch({
-                        [isLifecycleAction]: true,
+                        [isLifecycleAction]: null,
                         type: `${actionType}:failed`,
                         path: storableSpec.location,
                         state: 'failed',

@@ -1,29 +1,32 @@
 
-// TEMP
-export { LoadablePromise as default } from '@mkrause/lifecycle-loader';
+//import { LoadablePromise } from '@mkrause/lifecycle-loader';
+//import type { Loadable } from '@mkrause/lifecycle-loader';
 
-/*
-// @flow
 
-import { LoadablePromise } from '@mkrause/lifecycle-loader';
-import type { Loadable } from '@mkrause/lifecycle-loader';
+export const isStorableKey = Symbol('storable');
+
+export const isStorable = <T>(value : unknown) : value is StorablePromise<T> => {
+    return typeof value === 'object' && value !== null && isStorableKey in value;
+};
 
 
 type Showable = string | number
     | { toString : () => string }
-    | { toJSON : () => mixed };
+    | { toJSON : () => unknown };
 
 export type Step = string | Showable;
 
-type Result = mixed;
+type Item = unknown; // TODO
 
-export type Spec = {
+export type StorableSpec<T> = {
     // The location where this item is to be stored. Each "step" is either a string (object key), or
     // could be anything else (e.g. index into a hash map) as long as we can convert it to a string.
     location : Array<Step>,
     
+    getKey : () => null | string,
+    
     // Function that transforms the promise result to the item that we can store
-    accessor : Result => Loadable,
+    accessor : (result : T) => Item,
     
     // The operation to perform on the store
     // Note: "clearing" an item can be done by updating with an invalidated loadable (empty value).
@@ -35,6 +38,38 @@ export type Spec = {
         ;
 };
 
+export type StorablePromise<T> = Promise<T> & {
+    [isStorableKey] : null,
+    
+    // Needed in order to be able to dispatch a storable promise in redux (i.e. must be an action)
+    type : typeof isStorableKey,
+    
+    spec : StorableSpec<T>,
+};
+
+const specDefault = {
+    location: [],
+    accessor: <T>(result : T) => result,
+    operation: 'put',
+};
+
+export const makeStorable = <T>(promise : Promise<T>, spec : StorableSpec<T>) : StorablePromise<T> => {
+    const specWithDefaults = { ...specDefault, ...spec };
+    
+    const storablePromise : StorablePromise<T> = Object.assign(promise, {
+        [isStorableKey]: null,
+        type: isStorableKey as typeof isStorableKey,
+        spec: specWithDefaults,
+    });
+    return storablePromise;
+};
+
+export default makeStorable;
+
+
+
+
+/*
 type Fulfill = (
         resolve : Loadable => void,
         reject : Error => void
@@ -48,7 +83,7 @@ const specDefault = {
 
 // Promise for some item to be stored in a (global) store. Includes a specification that describes
 // how it's intended to be stored.
-export default class StorablePromise extends LoadablePromise {
+export default class StorablePromise<T> extends Promise<T> {
     spec : Spec;
     
     // Set the species to regular `Promise`, so that `then()` chaining will not try to create
@@ -56,13 +91,13 @@ export default class StorablePromise extends LoadablePromise {
     static [Symbol.species] = Promise;
     
     // Create from existing promise
-    static from(item : Loadable, spec : Spec, promise : Promise<Loadable>) {
-        return new StorablePromise(
-            (resolve, reject) => { promise.then(resolve, reject); },
-            item,
-            spec
-        );
-    }
+    // static from(item : Loadable, spec : Spec, promise : Promise<Loadable>) {
+    //     return new StorablePromise(
+    //         (resolve, reject) => { promise.then(resolve, reject); },
+    //         item,
+    //         spec
+    //     );
+    // }
     
     constructor(fulfill : Fulfill, item : Loadable, spec : Spec = {}) {
         super(fulfill, item);
