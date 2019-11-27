@@ -47,18 +47,19 @@ export default (_config : Config = {}) => {
             [isLifecycleAction]: null,
             type: `${actionType}:loading`,
             path: storableSpec.location,
+            //key: getKey(), // TODO
             state: 'loading',
             request: requestId,
-            //item: action.item, // TODO: apply accessor?
         });
         
-        action
+        storablePromise
             .then(
                 result => {
                     store.dispatch({
                         [isLifecycleAction]: null,
                         type: `${actionType}:ready`,
                         path: storableSpec.location,
+                        //key: getKey(), // TODO
                         state: 'ready',
                         request: requestId,
                         item: storableSpec.accessor(result),
@@ -69,14 +70,16 @@ export default (_config : Config = {}) => {
                         [isLifecycleAction]: null,
                         type: `${actionType}:failed`,
                         path: storableSpec.location,
+                        //key: getKey(), // TODO
                         state: 'failed',
                         request: requestId,
-                        item: reason.item, // TODO: apply accessor?
+                        reason,
                     });
                 },
             );
         
         // Return the promise to the caller
-        return action;
+        // Q: should we convert the promise to one which always resolves (never rejects) with a `status` here?
+        return storablePromise;
     };
 };

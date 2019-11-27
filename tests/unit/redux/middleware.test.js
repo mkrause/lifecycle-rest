@@ -96,12 +96,12 @@ describe('redux middleware', () => {
             request: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'failed',
-            item: undefined,
+            reason: sinon.match.instanceOf(Error),
         }));
     });
     
     /*
-    describe('...', () => {
+    describe('with RestApi', () => {
         const agentMock = createAgent({
             adapter: async request => { throw new Error(`Not supported`); },
         });
@@ -121,14 +121,14 @@ describe('redux middleware', () => {
             },
         };
         
-        // const api = RestApi(agentMock, {
-        //     store: ['app'],
-        //     resources: {
-        //         users: RestApi.Collection(UsersCollection, {
-        //             methods: {},
-        //         }),
-        //     },
-        // });
+        const api = RestApi(agentMock, {
+            store: ['app'],
+            resources: {
+                users: RestApi.Collection(UsersCollection, {
+                    methods: {},
+                }),
+            },
+        });
         
         it('...', () => {
             const reduceMock = sinon.stub()
