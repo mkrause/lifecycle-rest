@@ -19,7 +19,19 @@ const configDefault : Config = {
     prefix: 'lifecycle',
 };
 
-export const isLifecycleAction = Symbol('lifecycle.action');
+export const lifecycleActionKey = Symbol('lifecycle.action');
+export type LifecycleAction = {
+    [lifecycleActionKey] : null,
+    type : string,
+    path : LocationStep[],
+    state : 'loading' | 'failed' | 'ready',
+    request : string,
+    item ?: unknown,
+    reason ?: Error,
+};
+export const isLifecycleAction = (action : ReduxAnyAction) : action is LifecycleAction => {
+    return lifecycleActionKey in action;
+};
 
 export default (_config : Config = {}) => {
     const config = merge(configDefault, _config);
@@ -44,7 +56,7 @@ export default (_config : Config = {}) => {
         // - ready OR failed
         
         store.dispatch({
-            [isLifecycleAction]: null,
+            [lifecycleActionKey]: null,
             type: `${actionType}:loading`,
             path: storableSpec.location,
             //key: getKey(), // TODO
@@ -56,7 +68,7 @@ export default (_config : Config = {}) => {
             .then(
                 result => {
                     store.dispatch({
-                        [isLifecycleAction]: null,
+                        [lifecycleActionKey]: null,
                         type: `${actionType}:ready`,
                         path: storableSpec.location,
                         //key: getKey(), // TODO
@@ -67,7 +79,7 @@ export default (_config : Config = {}) => {
                 },
                 reason => {
                     store.dispatch({
-                        [isLifecycleAction]: null,
+                        [lifecycleActionKey]: null,
                         type: `${actionType}:failed`,
                         path: storableSpec.location,
                         //key: getKey(), // TODO

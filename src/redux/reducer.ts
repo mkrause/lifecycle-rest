@@ -6,12 +6,13 @@ import merge from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 
 import { Reducer } from 'redux';
+import { Step as LocationStep } from '../loader/StorablePromise.js';
+import { isLifecycleAction } from './middleware.js';
 
 
 type State = unknown;
 
-type Step = string;
-type StatePath = Array<Step>;
+type StatePath = Array<LocationStep>;
 
 type ReducerConfig = {
     prefix : string,
@@ -23,9 +24,9 @@ const supportsSetIn = (obj : object) : obj is { setIn : (path : StatePath, value
     ObjectUtil.hasProp(obj, 'setIn') && typeof obj.setIn === 'function';
 
 const supportsHasGetSet = (obj : object) : obj is {
-        has : (step : Step) => boolean,
-        get : (step : Step) => unknown,
-        set : (step : Step, value : unknown) => State,
+        has : (step : LocationStep) => boolean,
+        get : (step : LocationStep) => unknown,
+        set : (step : LocationStep, value : unknown) => State,
     } =>
         ObjectUtil.hasProp(obj, 'has')
             && ObjectUtil.hasProp(obj, 'get')
@@ -73,13 +74,15 @@ const setIn = <V>(state : State, path : StatePath, value : V) : State => {
     
     if (Array.isArray(state)) {
         let index : number;
-        if (typeof step === 'string') {
+        if (typeof step === 'number') {
+            index = step;
+        } else if (typeof step === 'string') {
             if (!/^[0-9]+$/.test(step)) {
                 throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step} [at ${path}]`);
             }
             index = parseInt(step);
         } else {
-            index = step;
+            throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step} [at ${path}]`);
         }
         
         const stateShallowCopy = [...state];
@@ -96,7 +99,7 @@ export default (_config : Partial<ReducerConfig> = {}) : Reducer<State> => {
     const config = merge(configDefaults, _config) as ReducerConfig;
     
     return (state, action) => {
-        if (!action.type.startsWith(`${config.prefix}:`)) {
+        if (!isLifecycleAction(action)) {
             return state;
         }
         

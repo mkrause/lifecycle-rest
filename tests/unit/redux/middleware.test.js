@@ -12,7 +12,7 @@ import * as Redux from 'redux';
 import createAgent from '../../../lib-esm/agent.js';
 import RestApi from '../../../lib-esm/loader/RestApi.js';
 import { makeStorable, isStorable, isStorableKey } from '../../../lib-esm/loader/StorablePromise.js';
-import createLifecycleMiddleware, { isLifecycleAction } from '../../../lib-esm/redux/middleware.js';
+import createLifecycleMiddleware, { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 
 
 chai.use(chaiAsPromised);
@@ -45,14 +45,14 @@ describe('redux middleware', () => {
         
         sinon.assert.calledThrice(reduceMock);
         sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
-            [isLifecycleAction]: null,
+            [lifecycleActionKey]: null,
             type: 'test:x.y.z:loading',
             request: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'loading',
         }));
         sinon.assert.calledWith(reduceMock.thirdCall, sinon.match.any, sinon.match({
-            [isLifecycleAction]: null,
+            [lifecycleActionKey]: null,
             type: 'test:x.y.z:ready',
             request: sinon.match.string,
             path: ['x', 'y', 'z'],
@@ -84,14 +84,14 @@ describe('redux middleware', () => {
         
         sinon.assert.calledThrice(reduceMock);
         sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
-            [isLifecycleAction]: null,
+            [lifecycleActionKey]: null,
             type: 'test:x.y.z:loading',
             request: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'loading',
         }));
         sinon.assert.calledWith(reduceMock.thirdCall, sinon.match.any, sinon.match({
-            [isLifecycleAction]: null,
+            [lifecycleActionKey]: null,
             type: 'test:x.y.z:failed',
             request: sinon.match.string,
             path: ['x', 'y', 'z'],
