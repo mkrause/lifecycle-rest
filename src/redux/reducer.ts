@@ -1,16 +1,37 @@
-// @ts-nocheck
 
 import match from 'case-match';
 import $msg from 'message-tag';
 
 import merge from '../util/merge.js';
-import { isPlainObject } from '../util/ObjectUtil.js';
+import * as ObjectUtil from '../util/ObjectUtil.js';
+
+import { Reducer } from 'redux';
 
 
-// type Step = string;
-// type Path = Array<Step>;
+type State = unknown;
 
-const setIn = (state, path /*: Path*/, value) => {
+type Step = string;
+type StatePath = Array<Step>;
+
+type ReducerConfig = {
+    prefix : string,
+    trackRequests : boolean,
+    requestsPath : StatePath,
+};
+
+const supportsSetIn = (obj : object) : obj is { setIn : (path : StatePath, value : unknown) => State } =>
+    ObjectUtil.hasProp(obj, 'setIn') && typeof obj.setIn === 'function';
+
+const supportsHasGetSet = (obj : object) : obj is {
+        has : (step : Step) => boolean,
+        get : (step : Step) => unknown,
+        set : (step : Step, value : unknown) => State,
+    } =>
+        ObjectUtil.hasProp(obj, 'has')
+            && ObjectUtil.hasProp(obj, 'get')
+            && ObjectUtil.hasProp(obj, 'set');
+
+const setIn = <V>(state : State, path : StatePath, value : V) : State => {
     if (path.length === 0) {
         return value;
     }
@@ -23,22 +44,22 @@ const setIn = (state, path /*: Path*/, value) => {
         throw new TypeError($msg`Cannot set value in empty state, given ${state} [at ${path}]`);
     }
     
-    if (typeof state === 'object') { // Note: already checked to not be `null`
+    if (ObjectUtil.isObject(state)) {
         // Note: check plain object first, so that we do not accidentally match a `get`/`set` property
         // on a plain object
-        if (isPlainObject(state)) {
+        if (ObjectUtil.isPlainObject(state)) {
             if (tail.length === 0) {
                 return { ...state, [step]: value };
-            } else if (Object.prototype.hasOwnProperty.call(state, step)) {
+            } else if (ObjectUtil.hasOwnProp(state, step)) {
                 return { ...state, [step]: setIn(state[step], tail, value) };
             } else {
-                // Refuse to create steps "in between". We could chose to create new objects with
-                // just the single step as key, but unless we see a clear use case we will reject.
+                // Refuse to create steps "in between". We could choose to create new objects with
+                // just the single step as key, but unless we see a clear use case, we will reject.
                 throw new TypeError($msg`No such state at ${step} [at ${path}]`);
             }
-        } else if ('setIn' in state) {
+        } else if (supportsSetIn(state)) {
             return state.setIn(path, value);
-        } else if ('has' in state && 'get' in state && 'set' in state) {
+        } else if (supportsHasGetSet(state)) {
             if (tail.length === 0) {
                 return state.set(step, value);
             } else if (state.has(step)) {
@@ -51,12 +72,14 @@ const setIn = (state, path /*: Path*/, value) => {
     }
     
     if (Array.isArray(state)) {
-        let index = step;
+        let index : number;
         if (typeof step === 'string') {
             if (!/^[0-9]+$/.test(step)) {
                 throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step} [at ${path}]`);
             }
             index = parseInt(step);
+        } else {
+            index = step;
         }
         
         const stateShallowCopy = [...state];
@@ -67,9 +90,10 @@ const setIn = (state, path /*: Path*/, value) => {
     throw new TypeError($msg`Cannot update value of unknown state type ${state} [at ${path}]`);
 };
 
-export default (_config = {}) => {
-    const configDefaults = { prefix: 'lifecycle', trackRequests: false, requestsPath: ['requests'] };
-    const config = merge(configDefaults, _config);
+
+const configDefaults = { prefix: 'lifecycle', trackRequests: false, requestsPath: ['requests'] };
+export default (_config : Partial<ReducerConfig> = {}) : Reducer<State> => {
+    const config = merge(configDefaults, _config) as ReducerConfig;
     
     return (state, action) => {
         if (!action.type.startsWith(`${config.prefix}:`)) {
