@@ -6,7 +6,7 @@ import merge from '../util/merge.js';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 
 import { Reducer } from 'redux';
-import { Step as LocationStep } from '../loader/StorablePromise.js';
+import { Step as LocationStep, stepToString } from '../loader/StorablePromise.js';
 import { isLifecycleAction } from './middleware.js';
 
 
@@ -28,9 +28,7 @@ const supportsHasGetSet = (obj : object) : obj is {
         get : (step : LocationStep) => unknown,
         set : (step : LocationStep, value : unknown) => State,
     } =>
-        ObjectUtil.hasProp(obj, 'has')
-            && ObjectUtil.hasProp(obj, 'get')
-            && ObjectUtil.hasProp(obj, 'set');
+        'has' in obj && 'get' in obj && 'set' in obj;
 
 const setIn = <V>(state : State, path : StatePath, value : V) : State => {
     if (path.length === 0) {
@@ -43,33 +41,6 @@ const setIn = <V>(state : State, path : StatePath, value : V) : State => {
     // state to an object or some other supported data structure.
     if (state === undefined || state === null) {
         throw new TypeError($msg`Cannot set value in empty state, given ${state} [at ${path}]`);
-    }
-    
-    if (ObjectUtil.isObject(state)) {
-        // Note: check plain object first, so that we do not accidentally match a `get`/`set` property
-        // on a plain object
-        if (ObjectUtil.isPlainObject(state)) {
-            if (tail.length === 0) {
-                return { ...state, [step]: value };
-            } else if (ObjectUtil.hasOwnProp(state, step)) {
-                return { ...state, [step]: setIn(state[step], tail, value) };
-            } else {
-                // Refuse to create steps "in between". We could choose to create new objects with
-                // just the single step as key, but unless we see a clear use case, we will reject.
-                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
-            }
-        } else if (supportsSetIn(state)) {
-            return state.setIn(path, value);
-        } else if (supportsHasGetSet(state)) {
-            if (tail.length === 0) {
-                return state.set(step, value);
-            } else if (state.has(step)) {
-                return state.set(step, setIn(state.get(step), tail, value));
-            } else {
-                // Cannot create steps "in between", would require us to know what constructor to use
-                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
-            }
-        }
     }
     
     if (Array.isArray(state)) {
@@ -88,6 +59,38 @@ const setIn = <V>(state : State, path : StatePath, value : V) : State => {
         const stateShallowCopy = [...state];
         stateShallowCopy[index] = value;
         return stateShallowCopy;
+    } else if (ObjectUtil.isObject(state)) {
+        // Note: check plain object first, so that we do not accidentally match a `get`/`set` property
+        // on a plain object
+        if (ObjectUtil.isPlainObject(state)) {
+            // Step must be a string (or number), because we're using it to index into a plain JS object
+            if (typeof step !== 'string' && typeof step !== 'number') {
+                throw new TypeError($msg`Invalid step ${step} into plain object, need a string or number`);
+            }
+            
+            const stepKey = String(step); // Convert numbers to string
+            
+            if (tail.length === 0) {
+                return { ...state, [stepKey]: value };
+            } else if (ObjectUtil.hasOwnProp(state, stepKey)) {
+                return { ...state, [stepKey]: setIn(state[stepKey], tail, value) };
+            } else {
+                // Refuse to create steps "in between". We could choose to create new objects with
+                // just the single step as key, but unless we see a clear use case, we will reject.
+                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+            }
+        } else if (supportsSetIn(state)) {
+            return state.setIn(path, value);
+        } else if (supportsHasGetSet(state)) {
+            if (tail.length === 0) {
+                return state.set(step, value);
+            } else if (state.has(step)) {
+                return state.set(step, setIn(state.get(step), tail, value));
+            } else {
+                // Cannot create steps "in between", would require us to know what constructor to use
+                throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+            }
+        }
     }
     
     throw new TypeError($msg`Cannot update value of unknown state type ${state} [at ${path}]`);

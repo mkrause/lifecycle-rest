@@ -6,7 +6,7 @@ type ValuesOf<O extends object> = O[keyof O];
 // https://github.com/microsoft/TypeScript/issues/21732
 export const hasProp = <O extends object, K extends PropertyKey>(obj : O, propKey : K)
     : obj is O & { [key in K] : unknown } =>
-        Object.prototype.hasOwnProperty.call(obj, propKey);
+        propKey in obj;
 
 // Same as `hasProp`, but specifically checks for an own property (for TS there is no difference).
 export const hasOwnProp = <O extends object, K extends PropertyKey>(obj : O, propKey : K)

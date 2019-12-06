@@ -1,4 +1,6 @@
 
+import $msg from 'message-tag';
+
 //import { LoadablePromise } from '@mkrause/lifecycle-loader';
 //import type { Loadable } from '@mkrause/lifecycle-loader';
 
@@ -15,6 +17,23 @@ type Showable = string | number
     | { toJSON : () => unknown };
 
 export type Step = string | Showable;
+
+export const stepToString = (step : Step) : string => {
+    if (typeof step === 'string') {
+        return step;
+    } else if (typeof step === 'number') {
+        return String(step);
+    } else if ('toJSON' in step) {
+        // Note: the `toJSON` if branch must come before the `toString` one, otherwise TypeScript (as of v3.7) seems
+        // to have a bug where it infers the type as `never` after the `toString` case.
+        return JSON.stringify(step.toJSON());
+    } else if ('toString' in step) {
+        return step.toString();
+    } else {
+        throw new TypeError($msg`Unexpected step type ${step}`);
+    }
+};
+
 
 type Item = unknown; // TODO
 
@@ -58,7 +77,7 @@ export const makeStorable = <T>(promise : Promise<T>, spec : StorableSpec<T>) : 
     
     const storablePromise : StorablePromise<T> = Object.assign(promise, {
         [isStorableKey]: null,
-        type: isStorableKey as typeof isStorableKey,
+        type: isStorableKey as typeof isStorableKey, // `as` needed to make this a `unique symbol`
         spec: specWithDefaults,
     });
     return storablePromise;
