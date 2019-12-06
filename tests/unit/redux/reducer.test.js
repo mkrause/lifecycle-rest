@@ -1,4 +1,4 @@
-/*
+
 import { expect } from 'chai';
 
 import $uri from 'uri-tag';
@@ -6,6 +6,7 @@ import $msg from 'message-tag';
 
 import * as Redux from 'redux';
 
+import { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 
@@ -37,16 +38,18 @@ describe('redux reducer', () => {
         // like Immutable.Map? Make it configurable?
         it('should fail on nonexistent path', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['nonexistent'],
                 //state: 'ready', // Unused
             };
             //...
         });
-        * /
+        */
         
         it('should fail to update on a state which is null or undefined', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['app'],
                 //state: 'ready', // Unused
@@ -63,6 +66,7 @@ describe('redux reducer', () => {
             };
             
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['ordering', 'nonnumerical'],
                 //state: 'ready', // Unused
@@ -78,6 +82,7 @@ describe('redux reducer', () => {
             };
             
             const action1 = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['ordering', 0],
                 //state: 'ready', // Unused
@@ -85,6 +90,7 @@ describe('redux reducer', () => {
             };
             
             const action2 = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['ordering', '5'], // Can be a string
                 //state: 'ready', // Unused
@@ -101,6 +107,7 @@ describe('redux reducer', () => {
         
         it('should replace the entire state if path is empty', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: [],
                 //state: 'ready', // Unused
@@ -112,6 +119,7 @@ describe('redux reducer', () => {
         
         it('should fail to create intermediate steps for non-single step', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['app', 'nonexistent1', 'nonexistent2'],
                 //state: 'ready', // Unused
@@ -123,6 +131,7 @@ describe('redux reducer', () => {
         
         it('should create the intermediate step on single nonexistent step', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['app', 'users', 'nonexistent'],
                 //state: 'ready', // Unused
@@ -142,6 +151,7 @@ describe('redux reducer', () => {
         
         it('should override any existing value', () => {
             const action = {
+                [lifecycleActionKey]: null,
                 type: 'test:',
                 path: ['app', 'users', 'user42'],
                 //state: 'ready', // Unused
@@ -165,4 +175,3 @@ describe('redux reducer', () => {
         it('TODO');
     });
 });
-*/
