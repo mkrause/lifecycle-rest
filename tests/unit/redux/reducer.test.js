@@ -4,6 +4,7 @@ import { expect } from 'chai';
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
+import { Loadable, status } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
 import { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
@@ -173,5 +174,44 @@ describe('redux reducer', () => {
     describe('on compatible immutable data structures', () => {
         // Immutable data structures that support get(), set(), etc.
         it('TODO');
+    });
+    
+    describe('with updater', () => {
+        const state2 = {
+            app: {
+                users: {
+                    user42: Loadable({ name: 'John' }),
+                },
+            },
+        };
+        
+        it('should be able to update loadable item', () => {
+            const action = {
+                [lifecycleActionKey]: null,
+                type: 'test:',
+                path: ['app', 'users', 'user42'],
+                //state: 'ready', // Unused
+                update: item => {
+                    return Loadable({ ...item, name: 'Alice' }, { ...item[status], loading: true });
+                },
+            };
+            
+            const result = reduce(state2, action);
+            expect(result).to.deep.equal({
+                app: {
+                    ...state2.app,
+                    users: {
+                        ...state2.app.users,
+                        user42: { name: 'Alice' },
+                    },
+                },
+            });
+            // expect(result.app.users.user42[]).to.have.property(status).to.deep.equal({
+            expect({ ...result.app.users.user42[status] }).to.deep.equal({
+                ready: false,
+                loading: true,
+                error: null,
+            })
+        });
     });
 });

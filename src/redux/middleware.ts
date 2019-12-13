@@ -2,7 +2,7 @@
 import uuid from 'uuid';
 import merge from '../util/merge.js';
 
-//import { status, LoadablePromise } from '@mkrause/lifecycle-loader';
+import { Loadable } from '@mkrause/lifecycle-loader';
 import makeStorable, { isStorable, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
 
 import { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
@@ -26,8 +26,10 @@ export type LifecycleAction = {
     path : LocationStep[],
     state : 'loading' | 'failed' | 'ready',
     request : string,
+    
     item ?: unknown,
-    reason ?: Error,
+    
+    update ?: <T>(item : Loadable<T>) => Loadable<T>,
 };
 export const isLifecycleAction = (action : ReduxAnyAction) : action is LifecycleAction => {
     return lifecycleActionKey in action;
@@ -62,6 +64,8 @@ export default (_config : Config = {}) => {
             //key: getKey(), // TODO
             state: 'loading',
             request: requestId,
+            
+            //update: storableSpec.update,
         });
         
         storablePromise
