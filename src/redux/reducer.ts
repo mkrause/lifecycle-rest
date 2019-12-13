@@ -90,6 +90,12 @@ const updateArray = (state : Array<unknown>, step : LocationStep, updateChild : 
     });
 };
 
+const updateMap = <K, V>(state : Map<K, V>, step : LocationStep, updateChild : (value : V) => V) => {
+    const mapUpdated = new Map(state);
+    mapUpdated.set(step, updateChild(state.get(step)));
+    return mapUpdated;
+};
+
 const updateIn = (state : State, path : StatePath, updater : Updater) : State => {
     // Base case: given an empty path, just update the current state
     if (path.length === 0) {
@@ -125,6 +131,17 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
     } else if (Array.isArray(state)) {
         try {
             return updateArray(state, step, (value : unknown) => updateIn(value, tail, updater));
+        } catch (e) {
+            if (e instanceof TypeError) {
+                // Add path information to exception message
+                throw new TypeError(`${e.message} [at ${path}]`);
+            } else {
+                throw e;
+            }
+        }
+    } else if (state instanceof Map) {
+        try {
+            return updateMap(state, step, (value : unknown) => updateIn(value, tail, updater));
         } catch (e) {
             if (e instanceof TypeError) {
                 // Add path information to exception message

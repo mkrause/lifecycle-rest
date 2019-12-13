@@ -11,6 +11,9 @@ import { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 
+const MapFromObject = obj => new Map(Object.entries(obj));
+const MapToObject = map => Object.fromEntries(map.entries());
+
 const lifecycleAction = action => ({
     [lifecycleActionKey]: null,
     type: 'test',
@@ -168,6 +171,35 @@ describe('redux reducer', () => {
                 });
                 expect(reduce(state, action2)).deep.equal({
                     ordering: [{ name: 'foo' }, { name: 'baz' }],
+                });
+            });
+        });
+        
+        describe('on Map', () => {
+            const stateWithMap = {
+                app: {
+                    users: MapFromObject({
+                        user42: { name: 'John' },
+                        user43: { name: 'Alice' },
+                    }),
+                },
+            };
+            
+            it('should update value given a valid path', () => {
+                const action = lifecycleAction({
+                    path: ['app', 'users', 'user43'],
+                    state: 'ready',
+                    item: { name: 'Alice!' },
+                });
+                
+                expect(reduce(stateWithMap, action)).to.deep.equal({
+                    app: {
+                        ...stateWithMap.app,
+                        users: MapFromObject({
+                            ...MapToObject(stateWithMap.app.users),
+                            user43: { name: 'Alice!' },
+                        }),
+                    },
                 });
             });
         });

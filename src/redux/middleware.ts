@@ -29,7 +29,8 @@ export type LifecycleAction = {
     
     item ?: unknown,
     
-    update ?: <T>(item : Loadable<T>) => Loadable<T>,
+    //update ?: <T>(item : Loadable<T>) => Loadable<T>,
+    update ?: (item : unknown) => unknown,
 };
 export const isLifecycleAction = (action : ReduxAnyAction) : action is LifecycleAction => {
     return lifecycleActionKey in action;
@@ -65,7 +66,7 @@ export default (_config : Config = {}) => {
             state: 'loading',
             requestId,
             
-            //update: storableSpec.update,
+            update: <T>(item : Loadable<T>) => Loadable.asLoading(item),
         });
         
         storablePromise
@@ -78,7 +79,12 @@ export default (_config : Config = {}) => {
                         //key: getKey(), // TODO
                         state: 'ready',
                         requestId,
-                        item: storableSpec.accessor(result),
+                        
+                        //item: storableSpec.accessor(result),
+                        update: <T>(item : Loadable<T>) => {
+                            const itemUpdated = storableSpec.accessor(result);
+                            return Loadable.asReady(item, itemUpdated);
+                        },
                     });
                 },
                 reason => {
@@ -89,7 +95,9 @@ export default (_config : Config = {}) => {
                         //key: getKey(), // TODO
                         state: 'failed',
                         requestId,
-                        reason,
+                        
+                        //reason,
+                        update: <T>(item : Loadable<T>) => Loadable.asFailed(item, reason),
                     });
                 },
             );
