@@ -148,13 +148,12 @@ export default (_config : Partial<ReducerConfig> = {}) : Reducer<State> => {
             return state;
         }
         
-        //
         // TOOD: update requests map
-        //
+        //if (config.trackRequests) { ... }
         
         if ('item' in action) {
             //return setIn(state, action.path, action.item);
-            return updateIn(state, action.path, <T>(item : Loadable<T>) => action.item);
+            return updateIn(state, action.path, <T>(_ : Loadable<T>) => action.item);
         } else if ('update' in action && action.update !== undefined) {
             return updateIn(state, action.path, action.update);
         } else {

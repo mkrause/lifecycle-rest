@@ -25,7 +25,7 @@ export type LifecycleAction = {
     type : string,
     path : LocationStep[],
     state : 'loading' | 'failed' | 'ready',
-    request : string,
+    requestId : string,
     
     item ?: unknown,
     
@@ -63,7 +63,7 @@ export default (_config : Config = {}) => {
             path: storableSpec.location,
             //key: getKey(), // TODO
             state: 'loading',
-            request: requestId,
+            requestId,
             
             //update: storableSpec.update,
         });
@@ -77,7 +77,7 @@ export default (_config : Config = {}) => {
                         path: storableSpec.location,
                         //key: getKey(), // TODO
                         state: 'ready',
-                        request: requestId,
+                        requestId,
                         item: storableSpec.accessor(result),
                     });
                 },
@@ -88,7 +88,7 @@ export default (_config : Config = {}) => {
                         path: storableSpec.location,
                         //key: getKey(), // TODO
                         state: 'failed',
-                        request: requestId,
+                        requestId,
                         reason,
                     });
                 },
