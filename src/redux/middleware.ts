@@ -1,8 +1,9 @@
 
+import $msg from 'message-tag';
 import uuid from 'uuid';
 import merge from '../util/merge.js';
 
-import { Loadable } from '@mkrause/lifecycle-loader';
+import { Loadable, status } from '@mkrause/lifecycle-loader';
 import makeStorable, { isStorable, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
 
 import { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
@@ -66,7 +67,10 @@ export default (_config : Config = {}) => {
             state: 'loading',
             requestId,
             
-            update: <T>(item : Loadable<T>) => Loadable.asLoading(item),
+            update: <T>(item : Loadable<T>) => {
+                if (!(status in item)) { throw new TypeError($msg`Expected loadable item, given ${item}`); }
+                return Loadable.asLoading(item);
+            },
         });
         
         storablePromise
@@ -82,6 +86,9 @@ export default (_config : Config = {}) => {
                         
                         //item: storableSpec.accessor(result),
                         update: <T>(item : Loadable<T>) => {
+                            if (!(status in item)) {
+                                throw new TypeError($msg`Expected loadable item, given ${item}`);
+                            }
                             const itemUpdated = storableSpec.accessor(result);
                             return Loadable.asReady(item, itemUpdated);
                         },
@@ -97,7 +104,12 @@ export default (_config : Config = {}) => {
                         requestId,
                         
                         //reason,
-                        update: <T>(item : Loadable<T>) => Loadable.asFailed(item, reason),
+                        update: <T>(item : Loadable<T>) => {
+                            if (!(status in item)) {
+                                throw new TypeError($msg`Expected loadable item, given ${item}`);
+                            }
+                            Loadable.asFailed(item, reason);
+                        },
                     });
                 },
             );

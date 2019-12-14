@@ -9,8 +9,6 @@ import $msg from 'message-tag';
 //import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
-import createAgent from '../../../lib-esm/agent.js';
-import RestApi from '../../../lib-esm/loader/RestApi.js';
 import { makeStorable, isStorable, isStorableKey } from '../../../lib-esm/loader/StorablePromise.js';
 import createLifecycleMiddleware, { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 

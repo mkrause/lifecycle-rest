@@ -30,7 +30,49 @@ export type CollResourceT<S extends CollSchema> = Resource<S>
     & ((index : Index) => Resource<Schema>);
 
 
-const schemaMethods = {}; // TODO
+const schemaMethods = {
+    parse(response : AxiosResponse) {
+        if (response.status === 204) { return null; }
+        return response.data;
+    },
+    
+    format(item : any) { return item },
+    
+    report(decodeResult : t.Validation<any>) {
+        if (decodeResult._tag === 'Right') {
+            return decodeResult.right;
+        } else {
+            const errors = decodeResult.left;
+            const report = PathReporter.report(decodeResult);
+            
+            let message = `Failed to decode response:\n` + report.map(error =>
+                `\n- ${error}`
+            );
+            
+            throw new DecodeError(message, errors);
+        }
+    },
+    
+    partial(schema : t.Type<any, any, any>) {
+        if ('props' in schema) {
+            return t.partial((schema as any).props);
+        } else {
+            return schema;
+        }
+    },
+    
+    decode<Schema extends CollectionSchema>(resource : CollectionResourceT<Schema>, input : unknown) {
+        const { agent, schema, schemaMethods } = resource[resourceDef];
+        
+        return schemaMethods.report(schema.decode(input));
+    },
+    
+    encode<Schema extends CollectionSchema>(resource : CollectionResourceT<Schema>, instance : unknown) {
+        const { agent, schema, schemaMethods } = resource[resourceDef];
+        
+        return schema.encode(instance);
+    },
+};
 
 const collectionDefaults = {
     path: [],
