@@ -115,8 +115,6 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         throw new TypeError($msg`Cannot set property on primitive, given ${state} [at ${path}]`);
     }
     
-    // Note: check plain object first, so that we do not accidentally match a `get`/`set` property
-    // on a plain object
     if (ObjectUtil.isPlainObject(state)) {
         try {
             return updatePlainObject(state, step, (value : unknown) => updateIn(value, tail, updater));

@@ -59,7 +59,7 @@ describe('redux reducer', () => {
             expect(reduce(state1, action)).to.equal(42);
         });
         
-        it('should fail to update on a state which is null or undefined', () => {
+        it('should fail to update on an undefined state', () => {
             const action = lifecycleAction({
                 path: ['app'],
                 state: 'ready',
@@ -67,7 +67,19 @@ describe('redux reducer', () => {
             });
             
             expect(() => reduce(undefined, action)).throw(TypeError);
+        });
+        
+        it('should fail to update on a state which is a primitive value', () => {
+            const action = lifecycleAction({
+                path: ['app'],
+                state: 'ready',
+                item: 42,
+            });
+            
             expect(() => reduce(null, action)).throw(TypeError);
+            expect(() => reduce(42, action)).throw(TypeError);
+            expect(() => reduce('hello', action)).throw(TypeError);
+            expect(() => reduce(true, action)).throw(TypeError);
         });
         
         describe('on plain object', () => {

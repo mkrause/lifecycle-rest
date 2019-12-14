@@ -24,8 +24,7 @@ describe('redux middleware', () => {
     
     it('should produce loading + ready actions given a promise that resolves', async () => {
         const reduceMock = sinon.stub()
-            //.callsFake((state, action) => state);
-            .callsFake((state, action) => { return state; });
+            .callsFake((state, action) => state);
         
         const initialState = {};
         
@@ -34,6 +33,9 @@ describe('redux middleware', () => {
             initialState,
             Redux.applyMiddleware(lifecycleMiddleware)
         );
+        
+        // Reset sinon stub after creating store, so that we ignore any redux `@@redux/INIT` actions
+        reduceMock.resetHistory();
         
         const storablePromise = makeStorable(new Promise((resolve, reject) => { resolve(42); }), {
             location: ['x', 'y', 'z'],
@@ -43,28 +45,28 @@ describe('redux middleware', () => {
         const dispatchPromise = store.dispatch(storablePromise);
         await expect(dispatchPromise).to.eventually.equal(42);
         
-        sinon.assert.calledThrice(reduceMock);
-        sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
+        sinon.assert.calledTwice(reduceMock);
+        sinon.assert.calledWith(reduceMock.firstCall, sinon.match.any, sinon.match({
             [lifecycleActionKey]: null,
             type: 'test:x.y.z:loading',
-            request: sinon.match.string,
+            requestId: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'loading',
+            update: sinon.match.func,
         }));
-        sinon.assert.calledWith(reduceMock.thirdCall, sinon.match.any, sinon.match({
+        sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
             [lifecycleActionKey]: null,
             type: 'test:x.y.z:ready',
-            request: sinon.match.string,
+            requestId: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'ready',
-            item: 42,
+            update: sinon.match.func,
         }));
     });
     
     it('should produce loading + failed actions given a promise that rejects', async () => {
         const reduceMock = sinon.stub()
-            //.callsFake((state, action) => state);
-            .callsFake((state, action) => { return state; });
+            .callsFake((state, action) => state);
         
         const initialState = {};
         
@@ -74,6 +76,9 @@ describe('redux middleware', () => {
             Redux.applyMiddleware(lifecycleMiddleware)
         );
         
+        // Reset sinon stub after creating store, so that we ignore any redux `@@redux/INIT` actions
+        reduceMock.resetHistory();
+        
         const storablePromise = makeStorable(new Promise((resolve, reject) => { reject(new Error('fail')); }), {
             location: ['x', 'y', 'z'],
             operation: 'put',
@@ -82,21 +87,22 @@ describe('redux middleware', () => {
         const dispatchPromise = store.dispatch(storablePromise);
         await expect(dispatchPromise).to.be.rejectedWith(Error, /fail/);
         
-        sinon.assert.calledThrice(reduceMock);
-        sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
+        sinon.assert.calledTwice(reduceMock);
+        sinon.assert.calledWith(reduceMock.firstCall, sinon.match.any, sinon.match({
             [lifecycleActionKey]: null,
             type: 'test:x.y.z:loading',
-            request: sinon.match.string,
+            requestId: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'loading',
+            update: sinon.match.func,
         }));
-        sinon.assert.calledWith(reduceMock.thirdCall, sinon.match.any, sinon.match({
+        sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
             [lifecycleActionKey]: null,
             type: 'test:x.y.z:failed',
-            request: sinon.match.string,
+            requestId: sinon.match.string,
             path: ['x', 'y', 'z'],
             state: 'failed',
-            reason: sinon.match.instanceOf(Error),
+            update: sinon.match.func,
         }));
     });
     
