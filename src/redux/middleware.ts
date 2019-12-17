@@ -84,7 +84,6 @@ export default (_config : Config = {}) => {
                         state: 'ready',
                         requestId,
                         
-                        //item: storableSpec.accessor(result),
                         update: <T>(item : Loadable<T>) => {
                             if (!(status in item)) {
                                 throw new TypeError($msg`Expected loadable item, given ${item}`);
@@ -103,7 +102,6 @@ export default (_config : Config = {}) => {
                         state: 'failed',
                         requestId,
                         
-                        //reason,
                         update: <T>(item : Loadable<T>) => {
                             if (!(status in item)) {
                                 throw new TypeError($msg`Expected loadable item, given ${item}`);

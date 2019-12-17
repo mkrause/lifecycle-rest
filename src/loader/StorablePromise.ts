@@ -1,9 +1,6 @@
 
 import $msg from 'message-tag';
 
-//import { LoadablePromise } from '@mkrause/lifecycle-loader';
-//import type { Loadable } from '@mkrause/lifecycle-loader';
-
 
 export const isStorableKey = Symbol('storable');
 
@@ -40,21 +37,20 @@ type Item = unknown; // TODO
 export type StorableSpec<T> = {
     // The location where this item is to be stored. Each "step" is either a string (object key), or
     // could be anything else (e.g. index into a hash map) as long as we can convert it to a string.
-    location : Array<Step>,
+    location : Array<Step> | Promise<Array<Step>>,
     
-    getKey : () => null | string,
+    //getKey : () => null | string,
     
     // Function that transforms the promise result to the item that we can store
     accessor : (result : T) => Item,
     
     // The operation to perform on the store
-    // Note: "clearing" an item can be done by updating with an invalidated loadable (empty value).
     operation :
         | 'skip' // Do nothing
-        | 'put' // Place the item in the store wholesale
-        | 'merge' // Merge the given item with the existing one
-        | 'update' // Apply a function that takes the current value and returns an updated version
-        ;
+        | 'clear' // Remove the current item (by replacing it with an empty/invalidated item)
+        | 'put' // Replace the current item with the given one
+        | 'merge' // Merge the current item with the given one
+        | 'update', // Apply a function that takes the current value and returns an updated version
 };
 
 export type StorablePromise<T> = Promise<T> & {

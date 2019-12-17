@@ -48,7 +48,7 @@ describe('integration - REST API with redux store', () => {
     });
     
     const initialState = {
-        // users: Loadable(new Map()),
+        // users: Loadable(new Map()), // TODO: need io-ts definition for a `Map`
         users: Loadable({}),
     };
     
