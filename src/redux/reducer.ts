@@ -16,7 +16,7 @@ type State = unknown;
 type StatePath = Array<LocationStep>;
 
 type ReducerConfig = {
-    // The prefix used for lifecycle action types
+    // The prefix used for lifecycle action types (should match the prefix configured in the middleware)
     prefix : string,
     
     // Whether to keep track of all requests in a separate log (so that we can know the status of requests
@@ -92,7 +92,16 @@ const updateArray = (state : Array<unknown>, step : LocationStep, updateChild : 
 
 const updateMap = <K, V>(state : Map<K, V>, step : LocationStep, updateChild : (value : V) => V) => {
     const mapUpdated = new Map(state);
-    mapUpdated.set(step, updateChild(state.get(step)));
+    
+    const key = step as K; // Assert that the step is a valid key
+    
+    if (!state.has(key)) {
+        throw new Error($msg`Missing key ${key} in map ${state}`);
+    }
+    
+    const value = state.get(key) as V; // Should exist (due to check above)
+    
+    mapUpdated.set(key, updateChild(value));
     return mapUpdated;
 };
 
@@ -154,11 +163,16 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
 };
 
 
-const configDefaults = { prefix: 'lifecycle', trackRequests: false, requestsPath: ['requests'] };
-export default (_config : Partial<ReducerConfig> = {}) : Reducer<State> => {
-    const config = merge(configDefaults, _config) as ReducerConfig;
+const configDefault = {
+    prefix: 'lifecycle',
+    trackRequests: false,
+    requestsPath: ['requests']
+};
+export default (configPartial : Partial<ReducerConfig> = {}) : Reducer<State> => {
+    const config = merge(configDefault, configPartial) as ReducerConfig;
     
     return (state, action) => {
+        // Only handle lifecycle actions
         if (!isLifecycleAction(action)) {
             return state;
         }
@@ -166,13 +180,17 @@ export default (_config : Partial<ReducerConfig> = {}) : Reducer<State> => {
         // TOOD: update requests map
         //if (config.trackRequests) { ... }
         
+        /*
         if ('item' in action) {
             //return setIn(state, action.path, action.item);
             return updateIn(state, action.path, <T>(_ : Loadable<T>) => action.item);
-        } else if ('update' in action && action.update !== undefined) {
+        }if ('update' in action && action.update !== undefined) {
             return updateIn(state, action.path, action.update);
         } else {
             return new TypeError(`Invalid action`);
         }
+        */
+        
+        return updateIn(state, action.path, action.update);
     };
 };

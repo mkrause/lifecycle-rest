@@ -1,44 +1,55 @@
 
 import $msg from 'message-tag';
+import * as ObjectUtil from '../util/ObjectUtil.js';
+
+import /*type*/ { Action as ReduxAction } from 'redux';
 
 
-export const isStorableKey = Symbol('storable');
+/*
+Extension of Promise, where the promise object also carries instructions on how the promise result is to be
+stored in a (redux) store.
+*/
 
-export const isStorable = <T>(value : unknown) : value is StorablePromise<T> => {
-    return typeof value === 'object' && value !== null && isStorableKey in value;
-};
-
-
-type Showable = string | number
+export type Showable = string | number
     | { toString : () => string }
     | { toJSON : () => unknown };
+
+export const showableToString = (showable : Showable) : string => {
+    if (typeof showable === 'string') {
+        return showable;
+    } else if (typeof showable === 'number') {
+        return String(showable);
+    } else if ('toJSON' in showable) {
+        // Note: the `toJSON` if branch must come before the `toString` one, otherwise TypeScript (as of v3.7) seems
+        // to have a bug where it infers the type as `never` after the `toString` case.
+        return JSON.stringify(showable);
+    } else if ('toString' in showable) {
+        return showable.toString();
+    } else {
+        throw new TypeError($msg`Invalid argument given, unable to convert to string: ${showable}`);
+    }
+};
+
 
 export type Step = string | Showable;
 
 export const stepToString = (step : Step) : string => {
-    if (typeof step === 'string') {
-        return step;
-    } else if (typeof step === 'number') {
-        return String(step);
-    } else if ('toJSON' in step) {
-        // Note: the `toJSON` if branch must come before the `toString` one, otherwise TypeScript (as of v3.7) seems
-        // to have a bug where it infers the type as `never` after the `toString` case.
-        return JSON.stringify(step.toJSON());
-    } else if ('toString' in step) {
-        return step.toString();
-    } else {
-        throw new TypeError($msg`Unexpected step type ${step}`);
-    }
+    return showableToString(step);
 };
 
 
 type Item = unknown; // TODO
 
+export const storableKey = Symbol('storable');
+
 export type StorableSpec<T> = {
     // The location where this item is to be stored. Each "step" is either a string (object key), or
     // could be anything else (e.g. index into a hash map) as long as we can convert it to a string.
+    // Can be a promise, if the location is not known ahead of time (e.g. depends on a dynamically created ID).
     location : Array<Step> | Promise<Array<Step>>,
     
+    // XXX alternatively, we could enforce `location` to always be known (no promise) up until the last step, and
+    // then have a separate `getKey` function that should give the last step for a resolved promise.
     //getKey : () => null | string,
     
     // Function that transforms the promise result to the item that we can store
@@ -53,14 +64,25 @@ export type StorableSpec<T> = {
         | 'update', // Apply a function that takes the current value and returns an updated version
 };
 
-export type StorablePromise<T> = Promise<T> & {
-    [isStorableKey] : null,
-    
+export type StorablePromise<T> = Promise<T>
     // Needed in order to be able to dispatch a storable promise in redux (i.e. must be an action)
-    type : typeof isStorableKey,
+    & ReduxAction<typeof storableKey>
+    & { [storableKey] : StorableSpec<T> };
+
+export const isStorable = <T>(value : unknown) : value is StorablePromise<T> => {
+    if (typeof value !== 'object' || value === null) { return false; }
     
-    spec : StorableSpec<T>,
+    if (!ObjectUtil.hasProp(value, 'type') || value.type !== storableKey) {
+        return false;
+    }
+    
+    if (!ObjectUtil.hasProp(value, storableKey)) {
+        return false;
+    }
+    
+    return true;
 };
+
 
 const specDefault = {
     location: [],
@@ -68,13 +90,15 @@ const specDefault = {
     operation: 'put',
 };
 
-export const makeStorable = <T>(promise : Promise<T>, spec : StorableSpec<T>) : StorablePromise<T> => {
-    const specWithDefaults = { ...specDefault, ...spec };
+export const makeStorable = <T>(promise : Promise<T>, spec : Partial<StorableSpec<T>>) : StorablePromise<T> => {
+    const specWithDefaults = { ...specDefault, ...spec } as StorableSpec<T>;
     
     const storablePromise : StorablePromise<T> = Object.assign(promise, {
-        [isStorableKey]: null,
-        type: isStorableKey as typeof isStorableKey, // `as` needed to make this a `unique symbol`
-        spec: specWithDefaults,
+        // Make this promise into a valid Redux action
+        type: storableKey as typeof storableKey, // `as` needed to make this a `unique symbol`
+        
+        // Add the spec
+        [storableKey]: specWithDefaults,
     });
     return storablePromise;
 };

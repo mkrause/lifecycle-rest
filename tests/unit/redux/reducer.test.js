@@ -20,6 +20,11 @@ const lifecycleAction = action => ({
     requestId: 'C31817AC-9A82-4DE1-AD71-89F2DBD4DC47',
     state: 'ready',
     ...action,
+    
+    // TEMP: convenience: if given `item`, turn it into an `update` function automatically
+    update: action.update ? action.update : item => {
+        return Loadable.asReady(item, action.item);
+    },
 });
 
 const itemReady = value => Loadable.asReady(Loadable(value));
@@ -32,14 +37,14 @@ describe('redux reducer', () => {
     const state1 = {
         app: {
             users: {
-                user42: { name: 'John' },
-                user43: { name: 'Alice' },
+                user42: itemReady({ name: 'John' }),
+                user43: itemReady({ name: 'Alice' }),
             },
         },
     };
     
     it('should not reduce if not a lifecycle action', () => {
-        // Not a lifecycle action (missing `lifecycleActionKey` symbol)
+        // Not a lifecycle action (missing `lifecycleActionKey` symbol), thus should be ignored
         const action = {
             type: 'test',
         };
@@ -53,7 +58,7 @@ describe('redux reducer', () => {
             const action = lifecycleAction({
                 path: [],
                 state: 'ready',
-                item: 42,
+                update: state => 42,
             });
             
             expect(reduce(state1, action)).to.equal(42);
@@ -63,7 +68,7 @@ describe('redux reducer', () => {
             const action = lifecycleAction({
                 path: ['app'],
                 state: 'ready',
-                item: 42,
+                update: state => 42,
             });
             
             expect(() => reduce(undefined, action)).throw(TypeError);
@@ -73,7 +78,7 @@ describe('redux reducer', () => {
             const action = lifecycleAction({
                 path: ['app'],
                 state: 'ready',
-                item: 42,
+                update: state => 42,
             });
             
             expect(() => reduce(null, action)).throw(TypeError);
@@ -87,7 +92,7 @@ describe('redux reducer', () => {
                 const action = lifecycleAction({
                     path: ['app', 'nonexistent'],
                     state: 'ready',
-                    item: 42,
+                    update: state => 42,
                 });
                 
                 expect(() => reduce(state1, action)).to.throw(TypeError);
@@ -135,7 +140,7 @@ describe('redux reducer', () => {
         describe('on array', () => {
             it('should fail to update on an array if the index is not a valid array index', () => {
                 const state = {
-                    ordering: [{ name: 'foo' }, { name: 'bar' }],
+                    ordering: [itemReady({ name: 'foo' }), itemReady({ name: 'bar' })],
                 };
                 
                 const action = lifecycleAction({
@@ -149,7 +154,7 @@ describe('redux reducer', () => {
             
             it('should fail to update on an array if the index is out of bounds', () => {
                 const state = {
-                    ordering: [{ name: 'foo' }, { name: 'bar' }],
+                    ordering: [itemReady({ name: 'foo' }), itemReady({ name: 'bar' })],
                 };
                 
                 const action = lifecycleAction({
@@ -163,7 +168,7 @@ describe('redux reducer', () => {
             
             it('should update on an array if the index is a valid array index', () => {
                 const state = {
-                    ordering: [{ name: 'foo' }, { name: 'bar' }],
+                    ordering: [itemReady({ name: 'foo' }), itemReady({ name: 'bar' })],
                 };
                 
                 const action1 = lifecycleAction({
@@ -191,8 +196,8 @@ describe('redux reducer', () => {
             const stateWithMap = {
                 app: {
                     users: MapFromObject({
-                        user42: { name: 'John' },
-                        user43: { name: 'Alice' },
+                        user42: itemReady({ name: 'John' }),
+                        user43: itemReady({ name: 'Alice' }),
                     }),
                 },
             };
@@ -241,8 +246,8 @@ describe('redux reducer', () => {
         const stateWithLoadable = {
             app: {
                 users: {
-                    user42: Loadable({ name: 'John' }),
-                    user43: Loadable({ name: 'Alice' }),
+                    user42: itemReady({ name: 'John' }),
+                    user43: itemReady({ name: 'Alice' }),
                 },
             },
         };

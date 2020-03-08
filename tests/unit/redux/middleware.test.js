@@ -9,7 +9,7 @@ import $msg from 'message-tag';
 //import { status, Loadable, LoadablePromise } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
-import { makeStorable, isStorable, isStorableKey } from '../../../lib-esm/loader/StorablePromise.js';
+import { makeStorable, isStorable, storableKey } from '../../../lib-esm/loader/StorablePromise.js';
 import createLifecycleMiddleware, { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 
 
@@ -18,6 +18,40 @@ chai.use(chaiAsPromised);
 describe('redux middleware', () => {
     const lifecycleMiddleware = createLifecycleMiddleware({
         prefix: 'test',
+    });
+    
+    it('should produce ready action given a promise that resolves and a location promise', async () => {
+        const reduceMock = sinon.stub()
+            .callsFake((state, action) => state);
+        
+        const initialState = {};
+        
+        const store = Redux.createStore(
+            reduceMock,
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware)
+        );
+        
+        // Reset sinon stub at this point (after creating store), so that we ignore any redux `@@redux/INIT` actions
+        reduceMock.resetHistory();
+        
+        const storablePromise = makeStorable(Promise.resolve(42), {
+            location: Promise.resolve(['x', 'y', 'z']),
+            operation: 'put',
+        });
+        
+        const dispatchPromise = store.dispatch(storablePromise);
+        await expect(dispatchPromise).to.eventually.equal(42);
+        
+        sinon.assert.calledOnce(reduceMock);
+        sinon.assert.calledWith(reduceMock.firstCall, sinon.match.any, sinon.match({
+            [lifecycleActionKey]: null,
+            type: 'test:x.y.z:ready',
+            requestId: sinon.match.string,
+            path: ['x', 'y', 'z'],
+            state: 'ready',
+            update: sinon.match.func,
+        }));
     });
     
     it('should produce loading + ready actions given a promise that resolves', async () => {
@@ -32,10 +66,10 @@ describe('redux middleware', () => {
             Redux.applyMiddleware(lifecycleMiddleware)
         );
         
-        // Reset sinon stub after creating store, so that we ignore any redux `@@redux/INIT` actions
+        // Reset sinon stub at this point (after creating store), so that we ignore any redux `@@redux/INIT` actions
         reduceMock.resetHistory();
         
-        const storablePromise = makeStorable(new Promise((resolve, reject) => { resolve(42); }), {
+        const storablePromise = makeStorable(Promise.resolve(42), {
             location: ['x', 'y', 'z'],
             operation: 'put',
         });
@@ -74,10 +108,10 @@ describe('redux middleware', () => {
             Redux.applyMiddleware(lifecycleMiddleware)
         );
         
-        // Reset sinon stub after creating store, so that we ignore any redux `@@redux/INIT` actions
+        // Reset sinon stub at this point (after creating store), so that we ignore any redux `@@redux/INIT` actions
         reduceMock.resetHistory();
         
-        const storablePromise = makeStorable(new Promise((resolve, reject) => { reject(new Error('fail')); }), {
+        const storablePromise = makeStorable(Promise.reject(new Error('fail')), {
             location: ['x', 'y', 'z'],
             operation: 'put',
         });
