@@ -61,13 +61,13 @@ const schemaMethods = {
         }
     },
     
-    decode<Schema extends CollectionSchema>(resource : CollectionResourceT<Schema>, input : unknown) {
+    decode<Schema extends CollSchema>(resource : CollResourceT<Schema>, input : unknown) {
         const { agent, schema, schemaMethods } = resource[resourceDef];
         
         return schemaMethods.report(schema.decode(input));
     },
     
-    encode<Schema extends CollectionSchema>(resource : CollectionResourceT<Schema>, instance : unknown) {
+    encode<Schema extends CollSchema>(resource : CollResourceT<Schema>, instance : unknown) {
         const { agent, schema, schemaMethods } = resource[resourceDef];
         
         return schema.encode(instance);
