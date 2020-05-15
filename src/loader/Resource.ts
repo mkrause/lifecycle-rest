@@ -4,6 +4,8 @@ import { AxiosInstance } from 'axios';
 
 import { Schema } from '../schema/Schema.js';
 
+import type { ResourceUtilT } from './ResourceUtil.js';
+
 
 export type Index = string;
 
@@ -24,8 +26,7 @@ export type Context = {
 
 export type ResourceDefinition<S extends Schema> = Context & {
     schema : S,
-    util : any, // TODO
-    //storable : <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
+    util : ResourceUtilT,
 };
 
 export const resourceDef = Symbol('lifecycle.resourceDefinition');
@@ -50,7 +51,7 @@ export type ResourceSpec<S extends Schema> = {
     uri : URI,
     store : StorePath,
     methods : { // ThisType<Resource> &
-        [method : string] : (...args : any[]) => any,
+        [method : string] : (...args : never[]) => unknown,
     },
     resources : {
         [resource : string] : ResourceCreator<Schema>,

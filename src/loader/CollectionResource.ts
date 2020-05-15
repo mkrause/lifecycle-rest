@@ -34,10 +34,15 @@ const collectionDefaults = {
     uri: '',
     store: [],
     methods: {
+        // Alias for `get`
         async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
+            return await collectionDefaults.methods.get.call(this, params);
+        },
+        
+        async get<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
             const { agent, schema, util, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
-            return util.decode(this, util.parse(response));
+            return util.decode(util.parse(response));
         },
         
         async post<S extends CollSchema>(this : CollResourceT<S>,
