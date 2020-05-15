@@ -1,14 +1,11 @@
 {
     "name": "@mkrause/lifecycle-rest",
     "version": "0.1.2",
-    "description": "Lifecycle REST API loader",
     "author": "mkrause",
     "license": "MIT",
     "repository": "https://github.com/mkrause/lifecycle-rest",
-    "es2015": "src/index.js",
-    "main": "lib-cjs/index.js",
-    "module": "lib-esm/index.js",
-    "browser": "lib-esm/index.js",
+    "description": "Lifecycle REST API loader",
+    "keywords": [],
     "files": [
         "src/",
         "lib-cjs/",
@@ -16,31 +13,36 @@
         "typings/"
     ],
     "typings": "./typings/index.d.ts",
+    "engines": {
+        "node": ">= 10.13"
+    },
+    "main": "./lib-cjs/index.js",
+    "module": "./lib-esm/index.js",
     "scripts": {
-        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
-        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --extensions '.js,.ts' --source-maps inline",
+        "build:cjs": "rm -rf ./lib-cjs && NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
+        "build:esm": "rm -rf ./lib-esm && NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --extensions '.js,.ts' --source-maps inline",
         "types": "tsc --project ./tsconfig.decl.json",
         "test:unit": "npm run build:esm && NODE_ENV=development BABEL_ENV=cjs mocha --require=@babel/register --recursive tests/unit",
         "test": "npm run test:unit && tsc && echo '[tsc] success'",
         "prepublishOnly": "npm run build:esm && npm run build:cjs && npm run types"
     },
     "devDependencies": {
-        "@babel/core": "^7.8.7",
-        "@babel/register": "^7.8.6",
+        "@babel/core": "^7.9.0",
+        "@babel/register": "^7.9.0",
         "@babel/cli": "^7.8.4",
-        "@babel/preset-env": "^7.8.7",
+        "@babel/preset-env": "^7.9.5",
         "@babel/plugin-proposal-class-properties": "^7.8.3",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
-        "@babel/preset-typescript": "^7.8.3",
+        "@babel/preset-typescript": "^7.9.0",
         "typescript": "^3.8.3",
-        "@types/node": "^13.9.0",
-        "@types/uuid": "^7.0.0",
+        "@types/node": "^13.13.2",
+        "@types/uuid": "^7.0.3",
         "tsd": "^0.11.0",
-        "mocha": "^7.1.0",
+        "mocha": "^7.1.1",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
         "chai-match-pattern": "^1.1.0",
-        "sinon": "^9.0.0",
+        "sinon": "^9.0.2",
         "redux": "^4.0.5",
         "http-status-codes": "^1.4.0"
     },
@@ -48,15 +50,15 @@
         "redux": "^4.0.0"
     },
     "dependencies": {
-        "ts-toolbelt": "6.3.5",
+        "ts-toolbelt": "6.5.1",
         "case-match": "^2.0.1",
-        "uuid": "^7.0.2",
-        "uri-tag": "^1.1.6",
-        "message-tag": "^0.4.4",
-        "object-merge-advanced": "^10.11.14",
+        "uuid": "^7.0.3",
+        "uri-tag": "^1.2.0",
+        "message-tag": "^0.5.1",
+        "object-merge-advanced": "^10.11.16",
         "axios": "^0.19.2",
         "fp-ts": "^2.5.3",
-        "io-ts": "^2.1.2",
-        "@mkrause/lifecycle-loader": "^0.0.5"
+        "io-ts": "^2.2.1",
+        "@mkrause/lifecycle-loader": "^0.1.2"
     }
 }

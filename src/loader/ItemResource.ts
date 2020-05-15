@@ -8,14 +8,13 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 import { concatUri } from '../util/uri.js';
 
 import { Schema, DecodeError } from '../schema/Schema.js';
+import * as t from 'io-ts';
 
 import { AxiosResponse } from 'axios';
-import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator, ResourceSpec, intantiateSpec } from './Resource.js';
+import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
+import { resourceDef, intantiateSpec } from './Resource.js';
 
-// TEMP
-import { PathReporter } from 'io-ts/lib/PathReporter.js';
-import * as t from 'io-ts';
-import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
 
 
 export type ItemSchema = Schema;
@@ -28,92 +27,48 @@ export type ItemResourceT<S extends ItemSchema> = Resource<S>;
     //& { [resourceDef] : { spec : {} } }; // Can extend, if needed
 
 
-const schemaMethods = {
-    parse(response : AxiosResponse) {
-        if (response.status === 204) { return null; }
-        return response.data;
-    },
-    
-    format(item : any) { return item },
-    
-    report(decodeResult : t.Validation<any>) {
-        if (decodeResult._tag === 'Right') {
-            return decodeResult.right;
-        } else {
-            const errors = decodeResult.left;
-            const report = PathReporter.report(decodeResult);
-            
-            let message = `Failed to decode response:\n` + report.map(error =>
-                `\n- ${error}`
-            );
-            
-            throw new DecodeError(message, errors);
-        }
-    },
-    
-    partial(schema : t.Type<any, any, any>) {
-        if ('props' in schema) {
-            return t.partial((schema as any).props);
-        } else {
-            return schema;
-        }
-    },
-    
-    decode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, input : unknown) {
-        const { agent, schema, schemaMethods } = resource[resourceDef];
-        
-        return schemaMethods.report(schema.decode(input));
-    },
-    
-    encode<Schema extends ItemSchema>(resource : ItemResourceT<Schema>, instance : unknown) {
-        const { agent, schema, schemaMethods } = resource[resourceDef];
-        
-        return schema.encode(instance);
-    },
-};
-
 const itemDefaults = {
     path: [],
     uri: '',
     store: [],
     methods: {
         async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            const { agent, schema, util, ...spec } = this[resourceDef];
             const response = await agent.head(spec.uri, { params });
             return response;
         },
         
         async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            const { agent, schema, util, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
-            return schemaMethods.decode(this, schemaMethods.parse(response));
+            return util.decode(util.parse(response));
         },
         
         async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
             : Promise<t.TypeOf<S>> {
-                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                const { agent, schema, util, ...spec } = this[resourceDef];
                 
-                const instanceEncoded = schemaMethods.encode(this, instance);
+                const instanceEncoded = util.encode(instance);
                 
                 const response = await agent.put(spec.uri, instanceEncoded, { params });
-                return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
+                return util.report(schema.decode(util.parse(response)));
             },
         
         async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
             : Promise<t.TypeOf<S>> {
-                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                const { agent, schema, util, ...spec } = this[resourceDef];
                 
-                const schemaPartial = schemaMethods.partial(schema);
+                const schemaPartial = util.partial(schema);
                 
                 const instanceEncoded = schema.encode(instance);
                 
                 const response = await agent.patch(spec.uri, instanceEncoded, { params });
-                return schemaMethods.report(schema.decode(schemaMethods.parse(response)));
+                return util.report(schema.decode(util.parse(response)));
             },
         
         async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
             : Promise<void> {
-                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                const { agent, schema, util, ...spec } = this[resourceDef];
                 
                 const response = await agent.delete(spec.uri, { params });
                 return response.data;
@@ -121,7 +76,7 @@ const itemDefaults = {
         
         async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
             : Promise<unknown> {
-                const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+                const { agent, schema, util, ...spec } = this[resourceDef];
                 
                 const response = await agent.post(spec.uri, { params });
                 return response.data;
@@ -163,26 +118,33 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
                 throw new TypeError($msg`Cannot override resourceDef key`);
             }
             
+            const resourceDefinition : ResourceDefinition<S> = {
+                agent: context.agent,
+                options: context.options,
+                ...spec,
+                schema,
+                
+                util: null as unknown as ResourceUtilT,
+                
+                /*
+                storable: (promise : Promise<any>) => {
+                    // TODO: make a `@storable` decorator that applies this function
+                    // Reason: using a wrapper function probably won't work inside an async function, because
+                    // we lose the promise in the `await` chain. But wrapping the entire async function in a
+                    // decorator should work.
+                    
+                    return Object.assign(promise, {
+                        storable: { location: spec.store, operation: 'put' },
+                    });
+                },
+                */
+            };
+            resourceDefinition.util = ResourceUtil(resourceDefinition, schema);
+            
             const resource : ItemResource = {
                 ...methods,
                 ...resources,
-                [resourceDef]: {
-                    agent: context.agent,
-                    options: context.options,
-                    ...spec,
-                    schema,
-                    schemaMethods,
-                    storable: (promise : Promise<any>) => {
-                        // TODO: make a `@storable` decorator that applies this function
-                        // Reason: using a wrapper function probably won't work inside an async function, because
-                        // we lose the promise in the `await` chain. But wrapping the entire async function in a
-                        // decorator should work.
-                        
-                        return Object.assign(promise, {
-                            storable: { location: spec.store, operation: 'put' },
-                        });
-                    },
-                },
+                [resourceDef]: resourceDefinition,
             };
             
             return resource;

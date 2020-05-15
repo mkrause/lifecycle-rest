@@ -7,15 +7,14 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 import $uri from 'uri-tag';
 import { concatUri } from '../util/uri.js';
 
-import * as t from 'io-ts';
-import { PathReporter } from 'io-ts/lib/PathReporter.js';
-import { Errors as ValidationErrors, ValidationError } from 'io-ts';
-import { either } from 'fp-ts';
-
 import { Schema, DecodeError } from '../schema/Schema.js';
+import * as t from 'io-ts';
 
 import { AxiosResponse } from 'axios';
-import { Index, ResourcePath, URI, StorePath, Agent, Context, Resource, resourceDef, ResourceCreator, ResourceSpec, intantiateSpec } from './Resource.js';
+import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
+import { resourceDef, intantiateSpec } from './Resource.js';
+
+import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
 
 
 export type CollSchema = Schema;
@@ -30,74 +29,30 @@ export type CollResourceT<S extends CollSchema> = Resource<S>
     & ((index : Index) => Resource<Schema>);
 
 
-const schemaMethods = {
-    parse(response : AxiosResponse) {
-        if (response.status === 204) { return null; }
-        return response.data;
-    },
-    
-    format(item : any) { return item },
-    
-    report(decodeResult : t.Validation<any>) {
-        if (decodeResult._tag === 'Right') {
-            return decodeResult.right;
-        } else {
-            const errors = decodeResult.left;
-            const report = PathReporter.report(decodeResult);
-            
-            let message = `Failed to decode response:\n` + report.map(error =>
-                `\n- ${error}`
-            );
-            
-            throw new DecodeError(message, errors);
-        }
-    },
-    
-    partial(schema : t.Type<any, any, any>) {
-        if ('props' in schema) {
-            return t.partial((schema as any).props);
-        } else {
-            return schema;
-        }
-    },
-    
-    decode<Schema extends CollSchema>(resource : CollResourceT<Schema>, input : unknown) {
-        const { agent, schema, schemaMethods } = resource[resourceDef];
-        
-        return schemaMethods.report(schema.decode(input));
-    },
-    
-    encode<Schema extends CollSchema>(resource : CollResourceT<Schema>, instance : unknown) {
-        const { agent, schema, schemaMethods } = resource[resourceDef];
-        
-        return schema.encode(instance);
-    },
-};
-
 const collectionDefaults = {
     path: [],
     uri: '',
     store: [],
     methods: {
         async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            const { agent, schema, util, ...spec } = this[resourceDef];
             const response = await agent.get(spec.uri, { params });
-            return schemaMethods.decode(this, schemaMethods.parse(response));
+            return util.decode(this, util.parse(response));
         },
         
         async post<S extends CollSchema>(this : CollResourceT<S>,
             instance : unknown, params = {}
         ) {
-            const { agent, schema, schemaMethods, ...spec } = this[resourceDef];
+            const { agent, schema, util, ...spec } = this[resourceDef];
             
             const entryResource = this('[new]'); // FIXME
-            const { schema: entrySchema, schemaMethods: entrySchemaMethods } = entryResource[resourceDef];
+            const { schema: entrySchema, util: entryUtil } = entryResource[resourceDef];
             
-            const instanceEncoded = entrySchemaMethods.encode(entryResource, instance);
+            const instanceEncoded = entryUtil.encode(instance);
             
             const response = await agent.post(spec.uri, instanceEncoded, { params });
-            const entryResult : t.TypeOf<typeof entrySchema> = entrySchemaMethods.report(
-                schema.decode(entrySchemaMethods.parse(response))
+            const entryResult : t.TypeOf<typeof entrySchema> = entryUtil.report(
+                schema.decode(entryUtil.parse(response))
             );
             
             return entryResult;
@@ -158,32 +113,40 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                     agent: context.agent,
                     path: [...spec.path, { index }],
                     store: [...spec.store, index],
-                    uri: concatUri([spec.uri, String(index)]),
+                    //uri: concatUri([spec.uri, String(index)]),
+                    uri: spec.uri, // FIXME (currently index already added during `instantiateSpec`)
                 };
                 return (entry as any)(entryContext);
             }) as ResourceComponents['entry'];
+            
+            const resourceDefinition : ResourceDefinition<S> = {
+                agent: context.agent,
+                options: context.options,
+                ...spec,
+                schema,
+                
+                util: null as unknown as ResourceUtilT,
+                
+                /*
+                storable: (promise : Promise<any>) => {
+                    // TODO: make a `@storable` decorator that applies this function
+                    // Reason: using a wrapper function probably won't work inside an async function, because
+                    // we lose the promise in the `await` chain. But wrapping the entire async function in a
+                    // decorator should work.
+                    
+                    return Object.assign(promise, {
+                        storable: { location: spec.store, operation: 'put' },
+                    });
+                },
+                */
+            };
+            resourceDefinition.util = ResourceUtil(resourceDefinition, schema);
             
             const resource : CollResource = Object.assign(makeEntry,
                 methods,
                 resources,
                 {
-                    [resourceDef]: {
-                        agent: context.agent,
-                        options: context.options,
-                        ...spec,
-                        schema,
-                        schemaMethods,
-                        storable: (promise : Promise<any>) => {
-                            // TODO: make a `@storable` decorator that applies this function
-                            // Reason: using a wrapper function probably won't work inside an async function, because
-                            // we lose the promise in the `await` chain. But wrapping the entire async function in a
-                            // decorator should work.
-                            
-                            return Object.assign(promise, {
-                                storable: { location: spec.store, operation: 'put' },
-                            });
-                        },
-                    }
+                    [resourceDef]: resourceDefinition,
                 },
             );
             

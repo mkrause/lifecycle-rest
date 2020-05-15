@@ -271,7 +271,7 @@ describe('redux reducer', () => {
             });
             expect({ ...result.app.users.user43 }).to.deep.equal({ name: 'Alice!' });
             expect({ ...result.app.users.user43[status] }).to.deep.equal({
-                ready: false,
+                ready: true,
                 loading: true,
                 error: null,
             });

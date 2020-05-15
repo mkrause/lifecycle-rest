@@ -22,17 +22,10 @@ export type Context = {
     agent : Agent,
 };
 
-export type SchemaMethods<S extends Schema> = {
-    // decode<S extends Schema>(resource : Resource<S>, input : unknown) {
-    //     const { schema, schemaMethods } = resource[contextKey];
-    //     return schemaMethods.report(schema.decode(input));
-    // },
-};
-
 export type ResourceDefinition<S extends Schema> = Context & {
     schema : S,
-    schemaMethods : any, //SchemaMethods<S>, // TODO
-    storable : <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
+    util : any, // TODO
+    //storable : <T>(promise : Promise<T>) => Promise<T> & { storable : unknown },
 };
 
 export const resourceDef = Symbol('lifecycle.resourceDefinition');

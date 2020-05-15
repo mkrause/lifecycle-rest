@@ -93,7 +93,8 @@ const specDefault = {
 export const makeStorable = <T>(promise : Promise<T>, spec : Partial<StorableSpec<T>>) : StorablePromise<T> => {
     const specWithDefaults = { ...specDefault, ...spec } as StorableSpec<T>;
     
-    const storablePromise : StorablePromise<T> = Object.assign(promise, {
+    const promiseCopy = promise.then(); // Copy promise before mutating it
+    const storablePromise : StorablePromise<T> = Object.assign(promiseCopy, {
         // Make this promise into a valid Redux action
         type: storableKey as typeof storableKey, // `as` needed to make this a `unique symbol`
         

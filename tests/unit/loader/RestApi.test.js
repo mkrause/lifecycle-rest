@@ -25,15 +25,15 @@ describe('RestApi', () => {
     });
     
     it('should require a resource creator', () => {
-        expect(() => { RestApi(agent); }).to.throw(TypeError);
+        expect(() => { RestApi({ agent }); }).to.throw(TypeError);
     });
     
     it('should require a resource creator', () => {
-        expect(() => { RestApi(agent); }).to.throw(TypeError);
+        expect(() => { RestApi({ agent }); }).to.throw(TypeError);
     });
     
     it('should return a resource by applying a root context', () => {
-        const api = RestApi(agent, ItemResource(Unknown));
+        const api = RestApi({ agent }, ItemResource(Unknown));
         
         expect(api).property(resourceDef).property('path').to.deep.equal([]);
         expect(api).property(resourceDef).property('store').to.deep.equal([]);

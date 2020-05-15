@@ -5,8 +5,17 @@ module.exports = {
     presets: [
         ['@babel/env', {
             targets: {
-                node: '8.9', // LTS (Carbon)
-                browsers: ['>0.25%', 'not dead'],
+                node: '10.13', // Support Node v10.13 LTS (Dubnium) or higher
+                browsers: [
+                    'last 2 Chrome versions',
+                    'last 2 Firefox versions',
+                    'last 2 Safari versions',
+                    'last 2 Edge versions',
+                    '>0.1%',
+                    'not dead',
+                    'not OperaMini all',
+                    'not IE < 11',
+                ],
             },
             
             // Whether to transpile modules
@@ -31,4 +40,5 @@ module.exports = {
             globals: ['Error', 'String', 'Number', 'Array', 'Promise'],
         }],
     ],
+    sourceMaps: 'inline',
 };

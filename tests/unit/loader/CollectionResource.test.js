@@ -49,6 +49,7 @@ describe('CollectionResource', () => {
         describe('method `post`', () => {
             it('should be supported as default method', async () => {
                 const result = await apiStandard.users.post({ name: 'Zackary' });
+                
                 expect(result).to.deep.equal({ user_id: 'user42', name: 'Zackary' });
             });
         });
