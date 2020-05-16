@@ -6,10 +6,9 @@ import { ResourceDefinition } from './Resource.js';
 
 import { AxiosResponse } from 'axios';
 
-// TEMP
-import { PathReporter } from 'io-ts/lib/PathReporter.js';
 import * as t from 'io-ts';
 import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
 const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema : S) => ({
@@ -22,7 +21,7 @@ const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema
         return response.data;
     },
     
-    report(decodeResult : t.Validation<any>) {
+    report(decodeResult : t.Validation<unknown>) {
         if (decodeResult._tag === 'Right') {
             return decodeResult.right;
         } else {
@@ -49,10 +48,10 @@ const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema
         return schema.encode(instance);
     },
     
-    // TODO
     
-    format(item : any) { return item },
-    partial(schema : t.Type<any, any, any>) {
+    format(item : unknown) { return item },
+    
+    partial(schema : t.Type<unknown, unknown, unknown>) {
         if ('props' in schema) {
             return t.partial((schema as any).props);
         } else {

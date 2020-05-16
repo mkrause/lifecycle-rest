@@ -16,6 +16,8 @@ import { resourceDef, intantiateSpec } from './Resource.js';
 
 import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
 
+import { StorablePromise, makeStorable } from './StorablePromise.js';
+
 
 export type ItemSchema = Schema;
 
@@ -27,59 +29,106 @@ export type ItemResourceT<S extends ItemSchema> = Resource<S>;
     //& { [resourceDef] : { spec : {} } }; // Can extend, if needed
 
 
+const defaultMethods = {
+    async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
+        const { agent, schema, util, ...spec } = this[resourceDef];
+        const response = await agent.head(spec.uri, { params });
+        return response;
+    },
+    
+    async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
+        const { agent, schema, util, ...spec } = this[resourceDef];
+        const response = await agent.get(spec.uri, { params });
+        const instance = util.decode(util.parse(response));
+        
+        return instance;
+        // return makeStorable(instance, {}); // TODO, cannot be done from inside an `async` function
+    },
+    
+    async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+        : Promise<t.TypeOf<S>> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const instanceEncoded = util.encode(instance);
+            
+            const response = await agent.put(spec.uri, instanceEncoded, { params });
+            return util.report(schema.decode(util.parse(response)));
+        },
+    
+    async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+        : Promise<t.TypeOf<S>> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const schemaPartial = util.partial(schema);
+            
+            const instanceEncoded = schema.encode(instance);
+            
+            const response = await agent.patch(spec.uri, instanceEncoded, { params });
+            return util.report(schema.decode(util.parse(response)));
+        },
+    
+    async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
+        : Promise<void> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const response = await agent.delete(spec.uri, { params });
+            return response.data;
+        },
+    
+    async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
+        : Promise<unknown> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const response = await agent.post(spec.uri, { params });
+            return response.data;
+        },
+};
+
 const itemDefaults = {
     path: [],
     uri: '',
     store: [],
     methods: {
-        async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
-            const response = await agent.head(spec.uri, { params });
-            return response;
-        },
+        head: defaultMethods.head,
         
-        async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
-            const response = await agent.get(spec.uri, { params });
-            return util.decode(util.parse(response));
-        },
-        
-        async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
-            : Promise<t.TypeOf<S>> {
-                const { agent, schema, util, ...spec } = this[resourceDef];
-                
-                const instanceEncoded = util.encode(instance);
-                
-                const response = await agent.put(spec.uri, instanceEncoded, { params });
-                return util.report(schema.decode(util.parse(response)));
+        get<S extends ItemSchema>(this : ItemResourceT<S>, params = {})
+            : StorablePromise<t.TypeOf<S>> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.get, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
             },
         
-        async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
-            : Promise<t.TypeOf<S>> {
-                const { agent, schema, util, ...spec } = this[resourceDef];
-                
-                const schemaPartial = util.partial(schema);
-                
-                const instanceEncoded = schema.encode(instance);
-                
-                const response = await agent.patch(spec.uri, instanceEncoded, { params });
-                return util.report(schema.decode(util.parse(response)));
+        put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+            : StorablePromise<t.TypeOf<S>> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.put, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
             },
         
-        async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
-            : Promise<void> {
-                const { agent, schema, util, ...spec } = this[resourceDef];
-                
-                const response = await agent.delete(spec.uri, { params });
-                return response.data;
+        patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
+            : StorablePromise<t.TypeOf<S>> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.patch, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
             },
         
-        async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
-            : Promise<unknown> {
-                const { agent, schema, util, ...spec } = this[resourceDef];
-                
-                const response = await agent.post(spec.uri, { params });
-                return response.data;
+        delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
+            : StorablePromise<void> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.delete, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
+            },
+        
+        post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
+            : StorablePromise<unknown> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
             },
     },
     resources: {},

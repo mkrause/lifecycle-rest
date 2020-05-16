@@ -16,6 +16,8 @@ import { resourceDef, intantiateSpec } from './Resource.js';
 
 import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
 
+import { StorablePromise, makeStorable } from './StorablePromise.js';
+
 
 export type CollSchema = Schema;
 
@@ -26,32 +28,63 @@ export type CollResourceSpec<S extends CollSchema> = ResourceSpec<S>
 
 // Generic collection resource type (i.e. as general as we can define it without knowing the actual spec)
 export type CollResourceT<S extends CollSchema> = Resource<S>
-    & ((index : Index) => Resource<Schema>);
+    & {
+        (index : Index) : Resource<Schema>,
+        entrySchema : Schema,
+    };
 
 
-const collectionDefaults = {
-    path: [],
-    uri: '',
-    store: [],
-    methods: {
-        // Alias for `get`
-        async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-            return await collectionDefaults.methods.get.call(this, params);
+const defaultMethods = {
+    async head<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<AxiosResponse> {
+        const { agent, schema, util, ...spec } = this[resourceDef];
+        const response = await agent.head(spec.uri, { params });
+        return response;
+    },
+    
+    async get<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
+        const { agent, schema, util, ...spec } = this[resourceDef];
+        const response = await agent.get(spec.uri, { params });
+        return util.decode(util.parse(response));
+    },
+    
+    // Alias for `get`
+    async list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
+        return await collectionDefaults.methods.get.call(this, params);
+    },
+    
+    /* TODO
+    async put<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+        : Promise<t.TypeOf<S>> {
+            //
         },
-        
-        async get<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
-            const response = await agent.get(spec.uri, { params });
-            return util.decode(util.parse(response));
-        },
-        
-        async post<S extends CollSchema>(this : CollResourceT<S>,
-            instance : unknown, params = {}
-        ) {
+    
+    async patch<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+        : Promise<t.TypeOf<S>> {
             const { agent, schema, util, ...spec } = this[resourceDef];
             
-            const entryResource = this('[new]'); // FIXME
-            const { schema: entrySchema, util: entryUtil } = entryResource[resourceDef];
+            const schemaPartial = util.partial(schema);
+            
+            const instanceEncoded = schema.encode(instance);
+            
+            const response = await agent.patch(spec.uri, instanceEncoded, { params });
+            return util.report(schema.decode(util.parse(response)));
+        },
+    
+    async delete<S extends CollSchema>(this : CollResourceT<S>, instanceEncoded : unknown, params = {})
+        : Promise<void> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const response = await agent.delete(spec.uri, { params });
+            return response.data;
+        },
+    */
+    
+    async post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+        : Promise<t.TypeOf<S>> {
+            const { agent, schema, util, ...spec } = this[resourceDef];
+            
+            const entrySchema = this.entrySchema;
+            const entryUtil = util.with(entrySchema);
             
             const instanceEncoded = entryUtil.encode(instance);
             
@@ -62,6 +95,35 @@ const collectionDefaults = {
             
             return entryResult;
         },
+};
+
+const collectionDefaults = {
+    path: [],
+    uri: '',
+    store: [],
+    methods: {
+        // Alias for `get`
+        list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : StorablePromise<t.TypeOf<S>> {
+            return makeStorable(Function.prototype.call.call(defaultMethods.get, this, params), {
+                location: this[resourceDef].store,
+                operation: 'put',
+            });
+        },
+        
+        get<S extends CollSchema>(this : CollResourceT<S>, params = {}) : StorablePromise<t.TypeOf<S>> {
+            return makeStorable(Function.prototype.call.call(defaultMethods.get, this, params), {
+                location: this[resourceDef].store,
+                operation: 'put',
+            });
+        },
+        
+        post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+            : StorablePromise<t.TypeOf<S>> {
+                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, params), {
+                    location: this[resourceDef].store,
+                    operation: 'put',
+                });
+            },
     },
     resources: {},
     entry: (index : Index) => { throw new TypeError($msg`Cannot construct entry`); },
@@ -131,19 +193,6 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                 schema,
                 
                 util: null as unknown as ResourceUtilT,
-                
-                /*
-                storable: (promise : Promise<any>) => {
-                    // TODO: make a `@storable` decorator that applies this function
-                    // Reason: using a wrapper function probably won't work inside an async function, because
-                    // we lose the promise in the `await` chain. But wrapping the entire async function in a
-                    // decorator should work.
-                    
-                    return Object.assign(promise, {
-                        storable: { location: spec.store, operation: 'put' },
-                    });
-                },
-                */
             };
             resourceDefinition.util = ResourceUtil(resourceDefinition, schema);
             
