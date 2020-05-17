@@ -59,6 +59,7 @@
         "axios": "^0.19.2",
         "fp-ts": "^2.5.3",
         "io-ts": "^2.2.1",
-        "@mkrause/lifecycle-loader": "^0.1.2"
+        "@mkrause/lifecycle-loader": "^0.1.2",
+        "immutable": "^4.0.0-rc.12"
     }
 }

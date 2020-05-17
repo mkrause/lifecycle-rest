@@ -52,6 +52,7 @@ const defaultMethods = {
             const instanceEncoded = util.encode(instance);
             
             const response = await agent.put(spec.uri, instanceEncoded, { params });
+            
             return util.report(schema.decode(util.parse(response)));
         },
     
@@ -101,7 +102,7 @@ const itemDefaults = {
         
         put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.put, this, params), {
+                return makeStorable(Function.prototype.call.call(defaultMethods.put, this, instance, params), {
                     location: this[resourceDef].store,
                     operation: 'put',
                 });
@@ -109,7 +110,7 @@ const itemDefaults = {
         
         patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.patch, this, params), {
+                return makeStorable(Function.prototype.call.call(defaultMethods.patch, this, instance, params), {
                     location: this[resourceDef].store,
                     operation: 'put',
                 });
@@ -117,15 +118,18 @@ const itemDefaults = {
         
         delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
             : StorablePromise<void> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.delete, this, params), {
-                    location: this[resourceDef].store,
-                    operation: 'put',
-                });
+                return makeStorable(
+                    Function.prototype.call.call(defaultMethods.delete, this, instanceEncoded, params),
+                    {
+                        location: this[resourceDef].store,
+                        operation: 'put',
+                    },
+                );
             },
         
         post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
             : StorablePromise<unknown> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, params), {
+                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, body, params), {
                     location: this[resourceDef].store,
                     operation: 'put',
                 });

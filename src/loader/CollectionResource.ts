@@ -119,7 +119,7 @@ const collectionDefaults = {
         
         post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, params), {
+                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, instance, params), {
                     location: this[resourceDef].store,
                     operation: 'put',
                 });
