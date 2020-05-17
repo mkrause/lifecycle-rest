@@ -221,7 +221,7 @@ describe('RestApi', () => {
                 },
             });
             
-            const item = Loadable(null);
+            const item = Loadable();
             
             const subscriber = sinon.stub()
                 .callsFake(item => {

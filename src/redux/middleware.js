@@ -3,8 +3,9 @@
 import uuid from 'uuid';
 import merge from '../util/merge.js';
 
-import { status, LoadablePromise } from '@mkrause/lifecycle-loader';
+import { status } from '@mkrause/lifecycle-loader';
 
+import { LoadablePromise } from '../loader/LoadablePromise.js';
 import StorablePromise from '../loader/StorablePromise.js';
 
 

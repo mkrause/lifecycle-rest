@@ -207,7 +207,7 @@ describe('ItemResource', () => {
                     methods: {
                         customGet({ spec, agent }, query) {
                             return StorablePromise.from(
-                                Loadable(null),
+                                Loadable(),
                                 { location: spec.store, operation: 'put' },
                                 agentMock.get('/api/user')
                                     .then(response => response.data),
@@ -264,7 +264,7 @@ describe('ItemResource', () => {
                     methods: {
                         query({ spec, agent }, query) {
                             return StorablePromise.from(
-                                Loadable(null),
+                                Loadable(),
                                 {
                                     location: spec.store,
                                     operation: 'merge',

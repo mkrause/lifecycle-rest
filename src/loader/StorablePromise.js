@@ -1,6 +1,6 @@
 // @flow
 
-import { LoadablePromise } from '@mkrause/lifecycle-loader';
+import { LoadablePromise } from './LoadablePromise.js';
 import type { Loadable } from '@mkrause/lifecycle-loader';
 
 

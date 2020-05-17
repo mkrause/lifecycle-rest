@@ -142,7 +142,7 @@ describe('CollectionResource', () => {
             methods: {
                 query({ spec, agent }, query) {
                     return StorablePromise.from(
-                        Loadable(null),
+                        Loadable(),
                         {
                             location: spec.store,
                             operation: 'merge',

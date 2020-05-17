@@ -73,7 +73,7 @@ const loaders = {
         const emptyCollection = Schema.instantiate();
         
         return StorablePromise.from(
-            Loadable(null),
+            Loadable(),
             { location: spec.store, operation: 'put' },
             Promise.resolve(emptyCollection)
         );
@@ -82,7 +82,7 @@ const loaders = {
     // Load a complete collection.
     list: (Schema : ItemSchema, spec) => (...options) => {
         return StorablePromise.from(
-            Loadable(null),
+            Loadable(),
             { location: spec.store, operation: 'put' },
             spec.methods._list(spec, ...options)
                 .then(response => {
@@ -126,7 +126,7 @@ const loaders = {
     //     };
     //     
     //     return StorablePromise.from(
-    //         Loadable(null),
+    //         Loadable(),
     //         { location: spec.store, operation: updateStore },
     //         spec.methods.query(spec, decode, ...options)
     //     );
@@ -139,7 +139,7 @@ const loaders = {
         const EntrySchema = spec.entry.schema;
         
         return StorablePromise.from(
-            Loadable(null),
+            Loadable(),
             { location: spec.store, operation: 'put' },
             spec.methods._create({ spec }, item, ...options)
                 .then(response => {
@@ -188,7 +188,7 @@ const CollectionResource = (Schema : ItemSchema = SimpleCollection, collectionSp
         .map(([methodName, method]) => {
             const methodDecorated = (...args) => {
                 const storable = (storableSpec = {}, promise) => {
-                    return StorablePromise.from(Loadable(null), { location: spec.store, ...storableSpec }, promise);
+                    return StorablePromise.from(Loadable(), { location: spec.store, ...storableSpec }, promise);
                 }
                 
                 const methodResult = method({ spec, agent, storable }, ...args);

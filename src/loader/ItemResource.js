@@ -62,7 +62,7 @@ const ItemResource = (Schema, itemSpec = {}) => {
                         return methodResult;
                     } else if (methodResult instanceof Promise) {
                         return StorablePromise.from(
-                            Loadable(null),
+                            Loadable(),
                             { location: spec.store, operation: 'put' },
                             methodResult
                                 .then(response => {
@@ -82,7 +82,7 @@ const ItemResource = (Schema, itemSpec = {}) => {
         const methods = {
             get(params = {}) {
                 return StorablePromise.from(
-                    Loadable(null),
+                    Loadable(),
                     { location: spec.store, operation: 'put' },
                     agent.get(spec.uri, { params })
                         .then(response => {
@@ -93,7 +93,7 @@ const ItemResource = (Schema, itemSpec = {}) => {
             
             put(item, params = {}) {
                 return StorablePromise.from(
-                    Loadable(null),
+                    Loadable(),
                     { location: spec.store, operation: 'put' },
                     agent.put(spec.uri, format(Schema.encode(item)), { params })
                         .then(response => {
