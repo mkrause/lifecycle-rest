@@ -25,30 +25,6 @@ type ReducerConfig = {
     requestsPath : StatePath, // The path at which to store tracked requests
 };
 
-/*
-const supportsSetIn = (obj : object) : obj is { setIn : (path : StatePath, value : unknown) => State } =>
-    ObjectUtil.hasProp(obj, 'setIn') && typeof obj.setIn === 'function';
-
-const supportsHasGetSet = (obj : object) : obj is {
-        has : (step : LocationStep) => boolean,
-        get : (step : LocationStep) => unknown,
-        set : (step : LocationStep, value : unknown) => State,
-    } =>
-        'has' in obj && 'get' in obj && 'set' in obj;
-
-// Immutable support
-} else if (supportsSetIn(state)) {
-    return state.setIn(path, value);
-} else if (supportsHasGetSet(state)) {
-    if (tail.length === 0) {
-        return state.set(step, value);
-    } else if (state.has(step)) {
-        return state.set(step, setIn(state.get(step), tail, value));
-    } else {
-        // Cannot create steps "in between", would require us to know what constructor to use
-        throw new TypeError($msg`No such state at ${step} [at ${path}]`);
-    }
-*/
 
 type Updater = <T>(item : Loadable<T>) => Loadable<T>;
 
@@ -96,7 +72,7 @@ const updateMap = <K, V>(state : Map<K, V>, step : LocationStep, updateChild : (
     const key = step as K; // Assert that the step is a valid key
     
     if (!state.has(key)) {
-        throw new Error($msg`Missing key ${key} in map ${state}`);
+        throw new TypeError($msg`Missing key ${key} in map ${state}`);
     }
     
     const value = state.get(key) as V; // Should exist (due to check above)
@@ -104,6 +80,32 @@ const updateMap = <K, V>(state : Map<K, V>, step : LocationStep, updateChild : (
     mapUpdated.set(key, updateChild(value));
     return mapUpdated;
 };
+
+
+// ImmutableJS
+const supportsSetIn = (obj : object) : obj is { setIn : (path : StatePath, value : unknown) => State } =>
+    ObjectUtil.hasProp(obj, 'setIn') && typeof obj.setIn === 'function';
+
+type ImmCompatible = {
+    has : (step : LocationStep) => boolean,
+    get : (step : LocationStep) => unknown,
+    set : (step : LocationStep, value : unknown) => State,
+};
+const isImmCompatible = (obj : object) : obj is ImmCompatible =>
+        'has' in obj && 'get' in obj && 'set' in obj;
+
+const updateImmutable = (state : ImmCompatible, step : LocationStep, updateChild : (value : unknown) => unknown) => {
+    const key = step;
+    
+    if (!state.has(key)) {
+        throw new TypeError($msg`Missing key ${key} in map ${state}`);
+    }
+    
+    const value = state.get(key);
+    
+    return state.set(key, updateChild(value));
+};
+
 
 const updateIn = (state : State, path : StatePath, updater : Updater) : State => {
     // Base case: given an empty path, just update the current state
@@ -122,6 +124,36 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
     
     if (!ObjectUtil.isObject(state)) {
         throw new TypeError($msg`Cannot set property on primitive, given ${state} [at ${path}]`);
+    }
+    
+    // Immutable support
+    /*
+    if (supportsSetIn(state)) {
+        return state.setIn(path, value);
+    }
+    */
+    if (isImmCompatible(state)) {
+        /*
+        if (tail.length === 0) {
+            return state.set(step, value);
+        } else if (state.has(step)) {
+            return state.set(step, setIn(state.get(step), tail, value));
+        } else {
+            // Cannot create steps "in between", would require us to know what constructor to use
+            throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+        }
+        */
+        
+        try {
+            return updateImmutable(state, step, (value : unknown) => updateIn(value, tail, updater));
+        } catch (e) {
+            if (e instanceof TypeError) {
+                // Add path information to exception message
+                throw new TypeError(`${e.message} [at ${path}]`);
+            } else {
+                throw e;
+            }
+        }
     }
     
     if (ObjectUtil.isPlainObject(state)) {
@@ -166,7 +198,7 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
 const configDefault = {
     prefix: 'lifecycle',
     trackRequests: false,
-    requestsPath: ['requests']
+    requestsPath: ['requests'],
 };
 export default (configPartial : Partial<ReducerConfig> = {}) : Reducer<State> => {
     const config = merge(configDefault, configPartial) as ReducerConfig;

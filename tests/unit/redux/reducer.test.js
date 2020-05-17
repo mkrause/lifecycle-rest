@@ -1,5 +1,6 @@
 
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
+import chaiMatchPattern from 'chai-match-pattern';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
@@ -7,9 +8,13 @@ import $msg from 'message-tag';
 import { Loadable, status } from '@mkrause/lifecycle-loader';
 import * as Redux from 'redux';
 
+import * as Imm from 'immutable';
+
 import { lifecycleActionKey } from '../../../lib-esm/redux/middleware.js';
 import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
+
+chai.use(chaiMatchPattern);
 
 const MapFromObject = obj => new Map(Object.entries(obj));
 const MapToObject = map => Object.fromEntries(map.entries());
@@ -223,7 +228,42 @@ describe('redux reducer', () => {
         
         describe('on ImmutableJS', () => {
             // Immutable data structures that support get(), set(), etc.
-            it('TODO');
+            
+            const stateWithMap = {
+                app: {
+                    users: Imm.Map({
+                        user42: itemReady({ name: 'John' }),
+                        user43: itemReady({ name: 'Alice' }),
+                    }),
+                },
+            };
+            
+            it('should update in Imm.Map given a valid path', () => {
+                const action = lifecycleAction({
+                    path: ['app', 'users', 'user43'],
+                    state: 'ready',
+                    item: { name: 'Alice!' },
+                });
+                
+                const stateUpdated = reduce(stateWithMap, action);
+                
+                // console.log('x', reduce(stateWithMap, action).app.users.toJS());
+                
+                const _ = chaiMatchPattern.getLodashModule();
+                expect(stateUpdated).to.matchPattern({
+                    app: {
+                        users: _.isObject,
+                    },
+                });
+                expect(stateUpdated.app.users).to.be.instanceOf(Imm.Map);
+                expect(stateUpdated.app.users.toJS()).to.deep.equal({
+                    user42: { name: 'John' },
+                    user43: { name: 'Alice!' },
+                });
+            });
+            
+            // TODO: Imm.Record, etc.
+            it('should update in Imm.Record given a valid path');
         });
     });
     
