@@ -14,7 +14,7 @@ import { AxiosResponse } from 'axios';
 import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
 import { resourceDef, intantiateSpec } from './Resource.js';
 
-import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
+import Adapter, { AdapterT } from './Adapter.js';
 
 import { StorablePromise, makeStorable } from './StorablePromise.js';
 
@@ -31,46 +31,45 @@ export type ItemResourceT<S extends ItemSchema> = Resource<S>;
 
 const defaultMethods = {
     async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
-        const { agent, schema, util, ...spec } = this[resourceDef];
+        const { agent, schema, adapter, ...spec } = this[resourceDef];
         const response = await agent.head(spec.uri, { params });
         return response;
     },
     
     async get<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-        const { agent, schema, util, ...spec } = this[resourceDef];
+        const { agent, schema, adapter, ...spec } = this[resourceDef];
         const response = await agent.get(spec.uri, { params });
-        const instance = util.decode(util.parse(response));
+        const instance = adapter.decode(adapter.parse(response));
         
         return instance;
-        // return makeStorable(instance, {}); // TODO, cannot be done from inside an `async` function
     },
     
     async put<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
         : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
-            const instanceEncoded = util.encode(instance);
+            const instanceEncoded = adapter.encode(instance);
             
             const response = await agent.put(spec.uri, instanceEncoded, { params });
             
-            return util.report(schema.decode(util.parse(response)));
+            return adapter.report(schema.decode(adapter.parse(response)));
         },
     
     async patch<S extends ItemSchema>(this : ItemResourceT<S>, instance : unknown, params = {})
         : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
-            const schemaPartial = util.partial(schema);
+            const schemaPartial = adapter.partial(schema);
             
             const instanceEncoded = schema.encode(instance);
             
             const response = await agent.patch(spec.uri, instanceEncoded, { params });
-            return util.report(schema.decode(util.parse(response)));
+            return adapter.report(schema.decode(adapter.parse(response)));
         },
     
     async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
         : Promise<void> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const response = await agent.delete(spec.uri, { params });
             return response.data;
@@ -78,7 +77,7 @@ const defaultMethods = {
     
     async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
         : Promise<unknown> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const response = await agent.post(spec.uri, { params });
             return response.data;
@@ -177,22 +176,10 @@ export const ItemResource = <S extends ItemSchema, Spec extends Partial<ItemReso
                 ...spec,
                 schema,
                 
-                util: null as unknown as ResourceUtilT,
-                
-                /*
-                storable: (promise : Promise<any>) => {
-                    // TODO: make a `@storable` decorator that applies this function
-                    // Reason: using a wrapper function probably won't work inside an async function, because
-                    // we lose the promise in the `await` chain. But wrapping the entire async function in a
-                    // decorator should work.
-                    
-                    return Object.assign(promise, {
-                        storable: { location: spec.store, operation: 'put' },
-                    });
-                },
-                */
+                methods: itemDefaults.methods,
+                adapter: null as unknown as AdapterT,
             };
-            resourceDefinition.util = ResourceUtil(resourceDefinition, schema);
+            resourceDefinition.adapter = context.options.adapter(resourceDefinition, schema);
             
             const resource : ItemResource = {
                 ...methods,

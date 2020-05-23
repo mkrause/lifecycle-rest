@@ -14,7 +14,7 @@ import { AxiosResponse } from 'axios';
 import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
 import { resourceDef, intantiateSpec } from './Resource.js';
 
-import ResourceUtil, { ResourceUtilT } from './ResourceUtil.js';
+import Adapter, { AdapterT } from './Adapter.js';
 
 import { StorablePromise, makeStorable } from './StorablePromise.js';
 
@@ -36,15 +36,15 @@ export type CollResourceT<S extends CollSchema> = Resource<S>
 
 const defaultMethods = {
     async head<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<AxiosResponse> {
-        const { agent, schema, util, ...spec } = this[resourceDef];
+        const { agent, schema, adapter, ...spec } = this[resourceDef];
         const response = await agent.head(spec.uri, { params });
         return response;
     },
     
     async get<S extends CollSchema>(this : CollResourceT<S>, params = {}) : Promise<t.TypeOf<S>> {
-        const { agent, schema, util, ...spec } = this[resourceDef];
+        const { agent, schema, adapter, ...spec } = this[resourceDef];
         const response = await agent.get(spec.uri, { params });
-        return util.decode(util.parse(response));
+        return adapter.decode(adapter.parse(response));
     },
     
     // Alias for `get`
@@ -60,31 +60,39 @@ const defaultMethods = {
     
     async patch<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
         : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
-            const schemaPartial = util.partial(schema);
+            const schemaPartial = adapter.partial(schema);
             
             const instanceEncoded = schema.encode(instance);
             
             const response = await agent.patch(spec.uri, instanceEncoded, { params });
-            return util.report(schema.decode(util.parse(response)));
+            return adapter.report(schema.decode(adapter.parse(response)));
         },
     
     async delete<S extends CollSchema>(this : CollResourceT<S>, instanceEncoded : unknown, params = {})
         : Promise<void> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const response = await agent.delete(spec.uri, { params });
             return response.data;
         },
     */
     
+    // Generic POST (does not assume anything about the data model)
     async post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+        : Promise<AxiosResponse> {
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
+            const response = await agent.head(spec.uri, { params });
+            return response;
+        },
+    
+    async create<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
         : Promise<t.TypeOf<S>> {
-            const { agent, schema, util, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const entrySchema = this.entrySchema;
-            const entryUtil = util.with(entrySchema);
+            const entryUtil = adapter.with(entrySchema);
             
             const instanceEncoded = entryUtil.encode(instance);
             
@@ -102,6 +110,8 @@ const collectionDefaults = {
     uri: '',
     store: [],
     methods: {
+        head: defaultMethods.head,
+        
         // Alias for `get`
         list<S extends CollSchema>(this : CollResourceT<S>, params = {}) : StorablePromise<t.TypeOf<S>> {
             return makeStorable(Function.prototype.call.call(defaultMethods.get, this, params), {
@@ -117,9 +127,11 @@ const collectionDefaults = {
             });
         },
         
-        post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
+        post: defaultMethods.post,
+        
+        create<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
-                return makeStorable(Function.prototype.call.call(defaultMethods.post, this, instance, params), {
+                return makeStorable(Function.prototype.call.call(defaultMethods.create, this, instance, params), {
                     location: this[resourceDef].store,
                     operation: 'put',
                 });
@@ -179,7 +191,10 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                     options: context.options,
                     agent: context.agent,
                     path: [...spec.path, { index }],
-                    store: [...spec.store, index],
+                    
+                    //store: [...spec.store, index],
+                    store: spec.store, // FIXME
+                    
                     //uri: concatUri([spec.uri, String(index)]),
                     uri: spec.uri, // FIXME (currently index already added during `instantiateSpec`)
                 };
@@ -192,9 +207,10 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                 ...spec,
                 schema,
                 
-                util: null as unknown as ResourceUtilT,
+                methods: collectionDefaults.methods,
+                adapter: null as unknown as AdapterT,
             };
-            resourceDefinition.util = ResourceUtil(resourceDefinition, schema);
+            resourceDefinition.adapter = context.options.adapter(resourceDefinition, schema);
             
             const resource : CollResource = Object.assign(makeEntry,
                 methods,

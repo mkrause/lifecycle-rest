@@ -4,16 +4,25 @@ import { v4 as uuid } from 'uuid';
 import merge from '../util/merge.js';
 
 import { Loadable, status } from '@mkrause/lifecycle-loader';
-import /*type*/ { Showable, StorableSpec, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
+import type { Showable, StorableSpec, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
 import makeStorable, { showableToString, isStorable, storableKey } from '../loader/StorablePromise.js';
 
-import /*type*/ { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
+import type { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
 
 
 type Location = Array<LocationStep>;
 
 const locationToString = (location : Location) => {
-    return location.join('.');
+    return location
+        .map(step => {
+            // FIXME
+            if (step.index) {
+                return showableToString(step.index);
+            } else {
+                return step;
+            }
+        })
+        .join('.');
 };
 
 export type Config = {
@@ -31,7 +40,8 @@ export type LifecycleAction = {
     state : 'loading' | 'failed' | 'ready',
     requestId : string,
     
-    //item ?: unknown, // FIXME
+    item ?: unknown,
+    reason ?: Error,
     
     update : <T>(item : Loadable<T>) => Loadable<T>,
     // update : (item : unknown) => unknown,
@@ -101,7 +111,18 @@ export default (configPartial : Partial<Config> = {}) => {
                 state: 'loading',
                 
                 update: <T>(item : Loadable<T>) => {
-                    if (!(status in item)) { throw new TypeError($msg`Expected loadable item, given ${item}`); }
+                    // FIXME
+                    if (typeof item === 'undefined') {
+                        return Loadable.asLoading<T>(Loadable());
+                    };
+                    
+                    if (storableSpec.operation === 'skip') {
+                        return item;
+                    }
+                    
+                    if (typeof item !== 'object' || item === null || !(status in item)) {
+                        throw new TypeError($msg`Expected loadable item, given ${item}`);
+                    }
                     return Loadable.asLoading(item);
                 },
             });
@@ -122,8 +143,19 @@ export default (configPartial : Partial<Config> = {}) => {
                                     state: 'ready',
                                     requestId,
                                     
+                                    item: storableSpec.accessor(result),
                                     update: <T>(item : Loadable<T>) => {
-                                        if (!(status in item)) {
+                                        // FIXME
+                                        if (typeof item === 'undefined') {
+                                            const itemUpdated = storableSpec.accessor(result) as T;
+                                            return Loadable.asReady<T>(Loadable(), itemUpdated);
+                                        };
+                                        
+                                        if (storableSpec.operation === 'skip') {
+                                            return item;
+                                        }
+                                        
+                                        if (typeof item !== 'object' || item === null || !(status in item)) {
                                             throw new TypeError($msg`Expected loadable item, given ${item}`);
                                         }
                                         const itemUpdated = storableSpec.accessor(result) as T;
@@ -139,8 +171,19 @@ export default (configPartial : Partial<Config> = {}) => {
                                     state: 'failed',
                                     requestId,
                                     
+                                    reason,
                                     update: <T>(item : Loadable<T>) => {
-                                        if (!(status in item)) {
+                                        // FIXME
+                                        if (typeof item === 'undefined') {
+                                            const itemUpdated = storableSpec.accessor(result) as T;
+                                            return Loadable.asFailed<T>(Loadable());
+                                        };
+                                        
+                                        if (storableSpec.operation === 'skip') {
+                                            return item;
+                                        }
+                                        
+                                        if (typeof item !== 'object' || item === null || !(status in item)) {
                                             throw new TypeError($msg`Expected loadable item, given ${item}`);
                                         }
                                         Loadable.asFailed(item, reason);

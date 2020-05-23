@@ -97,13 +97,23 @@ const isImmCompatible = (obj : object) : obj is ImmCompatible =>
 const updateImmutable = (state : ImmCompatible, step : LocationStep, updateChild : (value : unknown) => unknown) => {
     const key = step;
     
-    if (!state.has(key)) {
-        throw new TypeError($msg`Missing key ${key} in map ${state}`);
+    if (step.index) {
+        const index = step.index;
+        if (state.has(index)) {
+            return state.set(index, updateChild(state.get(index)));
+        } else {
+            // FIXME: only possible if last step
+            return state.set(index, updateChild(undefined));
+        }
+    } else {
+        if (!state.has(key)) {
+            throw new TypeError($msg`Missing key ${key} in map ${state}`);
+        }
+        
+        const value = state.get(key);
+        
+        return state.set(key, updateChild(value));
     }
-    
-    const value = state.get(key);
-    
-    return state.set(key, updateChild(value));
 };
 
 
@@ -119,6 +129,7 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
     // Reject updating a child of an empty state type. The user is expected to at the very least initialize
     // state to an object or some other supported data structure.
     if (state === undefined || state === null) {
+        debugger;
         throw new TypeError($msg`Cannot set property in empty state, given ${state} [at ${path}]`);
     }
     

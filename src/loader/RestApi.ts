@@ -1,15 +1,18 @@
 
 import env from '../util/env.js';
+import merge, { Merge } from '../util/merge.js';
 
 import type { Schema } from '../schema/Schema.js';
 
-import type { Agent, Context, Resource } from './Resource.js';
+import type { Agent, Options, Context, Resource } from './Resource.js';
 import { resourceDef } from './Resource.js';
+import adapter from './Adapter.js';
 
 import ItemResource from './ItemResource.js';
 import CollectionResource from './CollectionResource.js';
 
-import { makeStorable } from './StorablePromise.js';
+import type { StorableSpec } from './StorablePromise.js';
+import { isStorable, makeStorable } from './StorablePromise.js';
 
 
 /*
@@ -19,17 +22,20 @@ specifications. Each resource specification should describe a REST resource your
 The actual HTTP requests are delegated to the given *agent*.
 */
 
-type Config = { agent : Agent };
+type RestApiOptions = Partial<Options> & { agent : Options['agent'] };
 const RestApi = <S extends Schema, R extends Resource<S>>(
-        config : Config, resource : (context : Context) => R
+        _options : RestApiOptions, resource : (context : Context) => R
     ) : R => {
         //const resource = typeof _resource !== 'function' ? ItemResource(SimpleItem, _resource) : _resource;
         
-        const options = {}; // Currently none. In the future we may want to support additional API options
+        const options : Options = {
+            adapter,
+            ..._options,
+        };
         
         // Current context while traversing through the resource hierarchy
         const context = {
-            agent: config.agent,
+            agent: options.agent,
             options,
             path: [], // The current path in the API resource tree
             store: [],
@@ -46,5 +52,33 @@ RestApi.Collection = CollectionResource;
 
 RestApi.getResourceConfig = <S extends Schema>(resource : Resource<S>) => resource[resourceDef];
 RestApi.makeStorable = makeStorable;
+
+// @method decorator
+RestApi.method = ({ storable = true } = {}) => (target, key, descriptor) => {
+  if (typeof descriptor.value !== 'function') {
+    return descriptor;
+  }
+  
+  const fn = descriptor.value;
+  
+  return {
+    ...descriptor,
+    value(...args : Array<unknown>) {
+      const res = RestApi.getResourceConfig(this);
+      let result = Function.prototype.apply.call(fn, this, [res, ...args]);
+      
+      if (storable && result instanceof Promise && !isStorable(result)) {
+        const storableSpecDefaults = { location: res.store, operation: 'put' } as StorableSpec<unknown>;
+        const storableSpec = typeof storable === 'object' && storable !== null
+          ? { ...storableSpecDefaults, ...storable }
+          : storableSpecDefaults;
+        
+        result = makeStorable(result, storableSpec);
+      }
+      
+      return result;
+    },
+  };
+};
 
 export default RestApi;

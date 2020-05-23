@@ -2,7 +2,7 @@
 import $msg from 'message-tag';
 import * as ObjectUtil from '../util/ObjectUtil.js';
 
-import /*type*/ { Action as ReduxAction } from 'redux';
+import type { Action as ReduxAction } from 'redux';
 
 
 /*

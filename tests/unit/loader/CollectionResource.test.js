@@ -17,6 +17,7 @@ import createAgent from '../../../lib-esm/agent.js';
 import { Unknown } from '../../../lib-esm/schema/Schema.js';
 import agentMock from '../../resources/agent_mock.js';
 
+import adapter from '../../../lib-esm/loader/Adapter.js';
 import { resourceDef } from '../../../lib-esm/loader/Resource.js';
 import ItemResource, { DecodeError } from '../../../lib-esm/loader/ItemResource.js';
 import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
@@ -30,7 +31,7 @@ chai.use(chaiMatchPattern);
 describe('CollectionResource', () => {
     const contextWithAgent = {
         agent: agentMock,
-        options: {},
+        options: { adapter },
         path: [],
         store: [],
         uri: '',
@@ -46,9 +47,9 @@ describe('CollectionResource', () => {
             },
         })(contextWithAgent);
         
-        describe('method `post`', () => {
+        describe('method `create`', () => {
             it('should be supported as default method', async () => {
-                const result = await apiStandard.users.post({ name: 'Zackary' });
+                const result = await apiStandard.users.create({ name: 'Zackary' });
                 
                 expect(result).to.deep.equal({ user_id: 'user42', name: 'Zackary' });
             });

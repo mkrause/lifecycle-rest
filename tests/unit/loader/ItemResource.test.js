@@ -17,6 +17,7 @@ import createAgent from '../../../lib-esm/agent.js';
 import { Unknown } from '../../../lib-esm/schema/Schema.js';
 import agentMock from '../../resources/agent_mock.js';
 
+import adapter from '../../../lib-esm/loader/Adapter.js';
 import { DecodeError } from '../../../lib-esm/schema/Schema.js';
 import { resourceDef } from '../../../lib-esm/loader/Resource.js';
 import ItemResource from '../../../lib-esm/loader/ItemResource.js';
@@ -32,7 +33,7 @@ describe('ItemResource', () => {
         agent: createAgent({
             adapter: async request => { throw new Error(`Not supported`); },
         }),
-        options: {},
+        options: { adapter },
         path: [],
         uri: '',
         store: [],
@@ -149,7 +150,7 @@ describe('ItemResource', () => {
         // Use `agentMock` as the agent, see `tests/resources/agent_mock.js` for the definition
         const contextWithAgent = {
             agent: agentMock,
-            options: {},
+            options: { adapter },
             path: [],
             uri: '',
             store: [],
@@ -273,7 +274,7 @@ describe('ItemResource', () => {
         
         const contextWithAgent = {
             agent: agentMock,
-            options: {},
+            options: { adapter },
             path: [],
             store: [],
             uri: '',

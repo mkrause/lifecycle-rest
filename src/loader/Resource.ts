@@ -4,17 +4,21 @@ import { AxiosInstance } from 'axios';
 
 import { Schema } from '../schema/Schema.js';
 
-import type { ResourceUtilT } from './ResourceUtil.js';
+import type { AdapterT } from './Adapter.js';
 
 
 export type Index = string;
 
-export type Options = {};
+export type Agent = AxiosInstance;
 export type ResourcePathStep = string | { index : Index };
 export type ResourcePath = Array<ResourcePathStep>;
 export type URI = string;
 export type StorePath = Array<ResourcePathStep>;
-export type Agent = AxiosInstance;
+
+export type Options = {
+    agent : Agent,
+    adapter : AdapterT,
+};
 
 export type Context = {
     options : Options, // Root-level options
@@ -26,7 +30,7 @@ export type Context = {
 
 export type ResourceDefinition<S extends Schema> = Context & {
     schema : S,
-    util : ResourceUtilT,
+    adapter : AdapterT,
 };
 
 export const resourceDef = Symbol('lifecycle.resourceDefinition');

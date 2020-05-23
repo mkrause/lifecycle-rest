@@ -19,8 +19,8 @@
     "main": "./lib-cjs/index.js",
     "module": "./lib-esm/index.js",
     "scripts": {
-        "build:cjs": "rm -rf ./lib-cjs && NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --extensions '.js,.ts' --source-maps inline",
-        "build:esm": "rm -rf ./lib-esm && NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --extensions '.js,.ts' --source-maps inline",
+        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
+        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
         "types": "tsc --project ./tsconfig.decl.json",
         "test:unit": "npm run build:esm && NODE_ENV=development BABEL_ENV=cjs mocha --require=@babel/register --recursive tests/unit",
         "test": "npm run test:unit && tsc && echo '[tsc] success'",

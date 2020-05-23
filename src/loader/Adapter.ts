@@ -11,9 +11,9 @@ import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
-const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema : S) => ({
+const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema : S) => ({
     with(schema : Schema) {
-        return ResourceUtil(resource, schema);
+        return makeAdapter(resource, schema);
     },
     
     parse(response : AxiosResponse) {
@@ -37,13 +37,13 @@ const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema
     },
     
     decode(input : unknown) {
-        const { agent, schema, util } = resource;
+        const { agent, schema, adapter } = resource;
         
-        return util.report(schema.decode(input));
+        return adapter.report(schema.decode(input));
     },
     
     encode(instance : unknown) {
-        const { agent, schema, util } = resource;
+        const { agent, schema, adapter } = resource;
         
         return schema.encode(instance);
     },
@@ -60,9 +60,9 @@ const ResourceUtil = <S extends Schema>(resource : ResourceDefinition<S>, schema
     },
 });
 
-// Get the return type of `ResourceUtil`
+// Get the return type of `Adapter`
 // FIXME: currently this leads to a circular reference
-//export type ResourceUtilT = typeof ResourceUtil extends <S extends Schema>(...args : never[]) => infer R ? R : never;
-export type ResourceUtilT = any;
+//export type AdapterT = typeof Adapter extends <S extends Schema>(...args : never[]) => infer R ? R : never;
+export type AdapterT = any;
 
-export default ResourceUtil;
+export default makeAdapter;
