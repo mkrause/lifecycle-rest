@@ -27,18 +27,18 @@
         "prepublishOnly": "npm run build:esm && npm run build:cjs && npm run types"
     },
     "devDependencies": {
-        "@babel/core": "^7.9.0",
+        "@babel/core": "^7.9.6",
         "@babel/register": "^7.9.0",
         "@babel/cli": "^7.8.4",
-        "@babel/preset-env": "^7.9.5",
+        "@babel/preset-env": "^7.9.6",
         "@babel/plugin-proposal-class-properties": "^7.8.3",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
         "@babel/preset-typescript": "^7.9.0",
-        "typescript": "^3.8.3",
-        "@types/node": "^13.13.2",
-        "@types/uuid": "^7.0.3",
+        "typescript": "^3.9.3",
+        "@types/node": "^14.0.5",
+        "@types/uuid": "^8.0.0",
         "tsd": "^0.11.0",
-        "mocha": "^7.1.1",
+        "mocha": "^7.2.0",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
         "chai-match-pattern": "^1.1.0",
@@ -50,16 +50,16 @@
         "redux": "^4.0.0"
     },
     "dependencies": {
-        "ts-toolbelt": "6.5.1",
+        "ts-toolbelt": "6.9.0",
         "case-match": "^2.0.1",
-        "uuid": "^7.0.3",
+        "uuid": "^8.1.0",
         "uri-tag": "^1.2.0",
         "message-tag": "^0.5.1",
-        "object-merge-advanced": "^10.11.16",
+        "object-merge-advanced": "^10.11.21",
         "axios": "^0.19.2",
-        "fp-ts": "^2.5.3",
-        "io-ts": "^2.2.1",
-        "@mkrause/lifecycle-loader": "^0.1.2",
+        "fp-ts": "^2.6.1",
+        "io-ts": "^2.2.3",
+        "@mkrause/lifecycle-loader": "^0.2.0",
         "immutable": "^4.0.0-rc.12"
     }
 }
