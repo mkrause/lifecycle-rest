@@ -16,6 +16,21 @@ import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 chai.use(chaiMatchPattern);
 
+// Polyfill for Object.entries for Node v10
+if (!Object.entries) {
+  Object.entries = obj => {
+    const ownProps = Object.keys(obj);
+    let i = ownProps.length;
+    const resArray = new Array(i);
+    while (i--) {
+      resArray[i] = [ownProps[i], obj[ownProps[i]]];
+    }
+    
+    return resArray;
+  };
+}
+
+
 const MapFromObject = obj => new Map(Object.entries(obj));
 const MapToObject = map => Object.fromEntries(map.entries());
 
