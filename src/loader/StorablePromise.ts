@@ -4,39 +4,13 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 
 import type { Action as ReduxAction } from 'redux';
 
+import * as Location from './Location.js';
+
 
 /*
 Extension of Promise, where the promise object also carries instructions on how the promise result is to be
 stored in a (redux) store.
 */
-
-export type Showable = string | number
-    | { toString : () => string }
-    | { toJSON : () => unknown };
-
-export const showableToString = (showable : Showable) : string => {
-    if (typeof showable === 'string') {
-        return showable;
-    } else if (typeof showable === 'number') {
-        return String(showable);
-    } else if ('toJSON' in showable) {
-        // Note: the `toJSON` if branch must come before the `toString` one, otherwise TypeScript (as of v3.7) seems
-        // to have a bug where it infers the type as `never` after the `toString` case.
-        return JSON.stringify(showable);
-    } else if ('toString' in showable) {
-        return showable.toString();
-    } else {
-        throw new TypeError($msg`Invalid argument given, unable to convert to string: ${showable}`);
-    }
-};
-
-
-export type Step = string | Showable;
-
-export const stepToString = (step : Step) : string => {
-    return showableToString(step);
-};
-
 
 type Item = unknown; // TODO
 
@@ -46,7 +20,7 @@ export type StorableSpec<T> = {
     // The location where this item is to be stored. Each "step" is either a string (object key), or
     // could be anything else (e.g. index into a hash map) as long as we can convert it to a string.
     // Can be a promise, if the location is not known ahead of time (e.g. depends on a dynamically created ID).
-    location : Array<Step> | Promise<Array<Step>>,
+    location : Location.Location | Promise<Location.Location>,
     
     // XXX alternatively, we could enforce `location` to always be known (no promise) up until the last step, and
     // then have a separate `getKey` function that should give the last step for a resolved promise.

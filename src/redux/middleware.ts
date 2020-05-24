@@ -4,26 +4,12 @@ import { v4 as uuid } from 'uuid';
 import merge from '../util/merge.js';
 
 import { Loadable, status } from '@mkrause/lifecycle-loader';
-import type { Showable, StorableSpec, StorablePromise, Step as LocationStep } from '../loader/StorablePromise.js';
-import makeStorable, { showableToString, isStorable, storableKey } from '../loader/StorablePromise.js';
+import * as Location from '../loader/Location.js';
+import type { StorableSpec, StorablePromise } from '../loader/StorablePromise.js';
+import makeStorable, { isStorable, storableKey } from '../loader/StorablePromise.js';
 
 import type { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
 
-
-type Location = Array<LocationStep>;
-
-const locationToString = (location : Location) => {
-    return location
-        .map(step => {
-            // FIXME
-            if (step.index) {
-                return showableToString(step.index);
-            } else {
-                return step;
-            }
-        })
-        .join('.');
-};
 
 export type Config = {
     prefix : string,
@@ -36,7 +22,7 @@ export const lifecycleActionKey = Symbol('lifecycle.action');
 export type LifecycleAction = {
     [lifecycleActionKey] : null,
     type : string,
-    path : Location,
+    path : Location.Location,
     state : 'loading' | 'failed' | 'ready',
     requestId : string,
     
@@ -50,8 +36,8 @@ export const isLifecycleAction = (action : ReduxAnyAction) : action is Lifecycle
     return lifecycleActionKey in action;
 };
 
-const locationToReduxActionType = (prefix : string, location : Location) => {
-    return `${prefix}:${locationToString(location)}`;
+const locationToReduxActionType = (prefix : string, location : Location.Location) => {
+    return `${prefix}:${Location.locationAsString(location)}`;
 }
 
 /*
@@ -60,7 +46,7 @@ const dispatchLoading = <T>(
         store : Store,
         requestId : string,
         storableSpec : StorableSpec<T>,
-        location : Location
+        location : Location.Location
     ) => {
         const actionType = locationToReduxActionType(config.prefix, location);
         
@@ -113,7 +99,7 @@ export default (configPartial : Partial<Config> = {}) => {
                 update: <T>(item : Loadable<T>) => {
                     // FIXME
                     if (typeof item === 'undefined') {
-                        return Loadable.asLoading<T>(Loadable());
+                        return Loadable.asLoading(Loadable.Record<T>());
                     };
                     
                     if (storableSpec.operation === 'skip') {
@@ -148,7 +134,7 @@ export default (configPartial : Partial<Config> = {}) => {
                                         // FIXME
                                         if (typeof item === 'undefined') {
                                             const itemUpdated = storableSpec.accessor(result) as T;
-                                            return Loadable.asReady<T>(Loadable(), itemUpdated);
+                                            return Loadable.asReady(Loadable.Record<T>(), itemUpdated);
                                         };
                                         
                                         if (storableSpec.operation === 'skip') {
@@ -159,11 +145,11 @@ export default (configPartial : Partial<Config> = {}) => {
                                             throw new TypeError($msg`Expected loadable item, given ${item}`);
                                         }
                                         const itemUpdated = storableSpec.accessor(result) as T;
-                                        return Loadable.asReady<T>(item, itemUpdated);
+                                        return Loadable.asReady(item, itemUpdated);
                                     },
                                 });
                             },
-                            reason => {
+                            (reason : Error) => {
                                 store.dispatch({
                                     [lifecycleActionKey]: null,
                                     type: `${actionType}:failed`,
@@ -175,8 +161,7 @@ export default (configPartial : Partial<Config> = {}) => {
                                     update: <T>(item : Loadable<T>) => {
                                         // FIXME
                                         if (typeof item === 'undefined') {
-                                            const itemUpdated = storableSpec.accessor(result) as T;
-                                            return Loadable.asFailed<T>(Loadable());
+                                            return Loadable.asFailed(Loadable.Record<T>(), reason);
                                         };
                                         
                                         if (storableSpec.operation === 'skip') {

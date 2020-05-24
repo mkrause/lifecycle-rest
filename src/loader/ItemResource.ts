@@ -11,7 +11,7 @@ import { Schema, DecodeError } from '../schema/Schema.js';
 import * as t from 'io-ts';
 
 import { AxiosResponse } from 'axios';
-import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
+import type { ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
 import { resourceDef, intantiateSpec } from './Resource.js';
 
 import Adapter, { AdapterT } from './Adapter.js';

@@ -15,12 +15,14 @@ import createAgent from '../../../lib-esm/agent.js';
 // import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
 // import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
 import { Unknown } from '../../../lib-esm/schema/Schema.js';
-import agentMock from '../../resources/agent_mock.js';
+import agentMock, { users as apiMockUsers } from '../../resources/agent_mock.js';
 
 import adapter from '../../../lib-esm/loader/Adapter.js';
 import { DecodeError } from '../../../lib-esm/schema/Schema.js';
 import { resourceDef } from '../../../lib-esm/loader/Resource.js';
 import ItemResource from '../../../lib-esm/loader/ItemResource.js';
+
+import ResourceCommonTests from './ResourceCommonTests.js';
 
 
 require('util').inspect.defaultOptions.depth = Infinity;
@@ -39,111 +41,7 @@ describe('ItemResource', () => {
         store: [],
     };
     
-    it('should have sensible defaults', () => {
-        const resourceCreator = ItemResource(Unknown);
-        const resource = resourceCreator(contextTrivial);
-        
-        // The resource creator should expose its schema
-        expect(resourceCreator).property('schema').to.equal(Unknown);
-        
-        // The resource should have a private symbol `resourceDef` exposing its internal definition
-        expect(resource).property(resourceDef).property('path').to.deep.equal([]);
-        expect(resource).property(resourceDef).property('store').to.deep.equal([]);
-        expect(resource).property(resourceDef).property('uri').to.deep.equal('');
-    });
-    
-    it('should allow configuration of the `path`', () => {
-        const resource1 = ItemResource(Unknown, { path: [] })(contextTrivial);
-        const resource2 = ItemResource(Unknown, { path: ['x'] })(contextTrivial);
-        
-        // With non-empty context `path`
-        const resource3 = ItemResource(Unknown, { path: ['y', 'z'] })({ ...contextTrivial, path: ['x'] });
-        
-        expect(resource1).property(resourceDef).property('path').to.deep.equal([]);
-        expect(resource2).property(resourceDef).property('path').to.deep.equal(['x']);
-        expect(resource3).property(resourceDef).property('path').to.deep.equal(['x', 'y', 'z']);
-    });
-    
-    it('should allow configuration of the `uri`', () => {
-        const resource1 = ItemResource(Unknown, { uri: '' })(contextTrivial);
-        const resource2 = ItemResource(Unknown, { uri: 'x' })(contextTrivial);
-        
-        // With non-empty context `uri`
-        const resource3 = ItemResource(Unknown, { uri: 'y/z' })({ ...contextTrivial, uri: '/x' });
-        
-        // Should properly handle relative paths, slashes, etc. when concatenating
-        const resource4 = ItemResource(Unknown, { uri: '/y/z//' })({ ...contextTrivial, uri: '/x/' });
-        
-        expect(resource1).property(resourceDef).property('uri').to.deep.equal('');
-        expect(resource2).property(resourceDef).property('uri').to.deep.equal('x');
-        expect(resource3).property(resourceDef).property('uri').to.deep.equal('/x/y/z');
-        expect(resource4).property(resourceDef).property('uri').to.deep.equal('/x/y/z');
-    });
-    
-    it('should allow configuration of the `store`', () => {
-        const resource1 = ItemResource(Unknown, { store: [] })(contextTrivial);
-        const resource2 = ItemResource(Unknown, { store: ['x'] })(contextTrivial);
-        
-        // With non-empty context `store`
-        const resource3 = ItemResource(Unknown, { store: ['y', 'z'] })({ ...contextTrivial, store: ['x'] });
-        
-        expect(resource1).property(resourceDef).property('store').to.deep.equal([]);
-        expect(resource2).property(resourceDef).property('store').to.deep.equal(['x']);
-        expect(resource3).property(resourceDef).property('store').to.deep.equal(['x', 'y', 'z']);
-    });
-    
-    it('should allow definition of methods', () => {
-        const methodMock = sinon.stub().callsFake(name => `Hello ${name}`);
-        
-        const resource = ItemResource(Unknown, {
-            methods: {
-                greet: methodMock,
-            },
-        })(contextTrivial);
-        
-        expect(resource).to.have.property('greet').to.be.a('function');
-        
-        const result = resource.greet('Alice');
-        
-        expect(result).to.equal('Hello Alice');
-        sinon.assert.calledOnce(methodMock);
-        sinon.assert.calledWith(methodMock, 'Alice');
-        sinon.assert.calledOn(methodMock, resource); // `this` should be the resource
-    });
-    
-    it('should allow definition of subresources', () => {
-        const resource = ItemResource(Unknown, {
-            resources: {
-                foo: ItemResource(Unknown),
-            },
-        })(contextTrivial);
-        
-        expect(resource).to.have.property('foo').to.be.an('object');
-    });
-    
-    it('should use sensible defaults for subresources', () => {
-        const context = {
-            ...contextTrivial,
-            path: ['x'],
-            uri: '/x',
-            store: ['x'],
-        };
-        
-        const resource = ItemResource(Unknown, {
-            path: ['y'],
-            uri: 'y',
-            store: ['y'],
-            resources: {
-                z: ItemResource(Unknown),
-            },
-        })(context);
-        
-        // Subresources should use their key as the default label (in this case, `z`)
-        expect(resource.z).property(resourceDef).property('path').to.deep.equal(['x', 'y', 'z']);
-        expect(resource.z).property(resourceDef).property('uri').to.equal('/x/y/z');
-        expect(resource.z).property(resourceDef).property('store').to.deep.equal(['x', 'y', 'z']);
-    });
-    
+    ResourceCommonTests(ItemResource);
     
     // Test the default methods (without doing any real schema encoding/decoding yet, i.e. use `Unknown`)
     describe('default methods (with trivial schema)', () => {
@@ -182,7 +80,7 @@ describe('ItemResource', () => {
                 expect(result1).to.deep.equal({ version: 42 });
                 
                 // Should be able to pass query parameters
-                const result2 = await api.greet.get({ name: 'Alice', score: 101 });
+                const result2 = await api.greet.get({ ...apiMockUsers.alice, name: 'Alice', score: 101 });
                 expect(result2).to.equal('Hello Alice');
             });
         });
@@ -193,6 +91,7 @@ describe('ItemResource', () => {
                     name: 'Alice!',
                 });
                 
+                // Should replace the entire user
                 expect(userUpdated).to.deep.equal({
                     name: 'Alice!',
                 });
@@ -208,6 +107,7 @@ describe('ItemResource', () => {
                 
                 // Result should only have the partial update applied
                 expect(userUpdated).to.deep.equal({
+                    ...apiMockUsers.alice,
                     name: 'Alice!',
                     score: 101,
                 });
@@ -320,7 +220,7 @@ describe('ItemResource', () => {
             it('should decode the response using the given schema (schema: item)', async () => {
                 // Test successful decode
                 const result1 = await api.users['alice'].get();
-                expect(result1).to.deep.equal({ name: 'Alice', score: 101 });
+                expect(result1).to.deep.equal({ ...apiMockUsers.alice, name: 'Alice', score: 101 });
                 
                 // Test failed decode
                 expect(
@@ -335,16 +235,16 @@ describe('ItemResource', () => {
                 // Test successful encode
                 const result1 = await api.users.get();
                 expect(result1).to.deep.equal({
-                    'alice': { name: 'Alice', score: 101 },
-                    'bob': { name: 'Bob', score: 7 },
-                    'john': { name: 'John', score: 42 },
+                    'alice': { ...apiMockUsers.alice, name: 'Alice', score: 101 },
+                    'bob': { ...apiMockUsers.bob, name: 'Bob', score: 7 },
+                    'john': { ...apiMockUsers.john, name: 'John', score: 42 },
                 });
                 
                 const result2 = await api.usersAsList.get({ format: 'list' });
                 expect(result2).to.deep.equal([
-                    { id: 'alice', name: 'Alice', score: 101 },
-                    { id: 'bob', name: 'Bob', score: 7 },
-                    { id: 'john', name: 'John', score: 42 },
+                    { ...apiMockUsers.alice, id: 'alice', name: 'Alice', score: 101 },
+                    { ...apiMockUsers.bob, id: 'bob', name: 'Bob', score: 7 },
+                    { ...apiMockUsers.john, id: 'john', name: 'John', score: 42 },
                 ]);
                 
                 // TODO: test failed decode
@@ -354,6 +254,7 @@ describe('ItemResource', () => {
         describe('method `put`', () => {
             it('should encode the request/decode the response using the given schema', async () => {
                 const aliceUpdated = orThrow(UserSchema.decode({
+                    ...apiMockUsers.alice,
                     name: 'Alice!',
                     score: 102,
                 }));
@@ -376,6 +277,7 @@ describe('ItemResource', () => {
                 
                 const result = await api.users['alice'].patch(aliceUpdated);
                 expect(result).to.deep.equal({
+                    ...apiMockUsers.alice,
                     name: 'Alice', // Unchanged
                     score: 102, // Updated
                 });

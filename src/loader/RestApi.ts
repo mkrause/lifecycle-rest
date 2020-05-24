@@ -1,5 +1,6 @@
 
 import env from '../util/env.js';
+import * as ObjectUtil from '../util/ObjectUtil.js';
 import merge, { Merge } from '../util/merge.js';
 
 import type { Schema } from '../schema/Schema.js';
@@ -54,31 +55,39 @@ RestApi.getResourceConfig = <S extends Schema>(resource : Resource<S>) => resour
 RestApi.makeStorable = makeStorable;
 
 // @method decorator
-RestApi.method = ({ storable = true } = {}) => (target, key, descriptor) => {
-  if (typeof descriptor.value !== 'function') {
-    return descriptor;
-  }
-  
-  const fn = descriptor.value;
-  
-  return {
-    ...descriptor,
-    value(...args : Array<unknown>) {
-      const res = RestApi.getResourceConfig(this);
-      let result = Function.prototype.apply.call(fn, this, [res, ...args]);
-      
-      if (storable && result instanceof Promise && !isStorable(result)) {
-        const storableSpecDefaults = { location: res.store, operation: 'put' } as StorableSpec<unknown>;
-        const storableSpec = typeof storable === 'object' && storable !== null
-          ? { ...storableSpecDefaults, ...storable }
-          : storableSpecDefaults;
-        
-        result = makeStorable(result, storableSpec);
-      }
-      
-      return result;
-    },
-  };
+type MethodOptions = {
+    storable ?: boolean | Partial<StorableSpec<unknown>>
 };
+RestApi.method = ({ storable = true } : MethodOptions = {}) =>
+    (target : unknown, key : PropertyKey, descriptor : PropertyDescriptor) : PropertyDescriptor => {
+        if (typeof descriptor.value !== 'function') {
+            return descriptor;
+        }
+        
+        const fn = descriptor.value;
+        
+        return {
+            ...descriptor,
+            value<S extends Schema>(this : Resource<S>, ...args : Array<unknown>) {
+                const res = RestApi.getResourceConfig(this);
+                let result = Function.prototype.apply.call(fn, this, [res, ...args]);
+                
+                if (storable && result instanceof Promise && !isStorable(result)) {
+                    const storableSpecDefaults = {
+                        location: res.store,
+                        operation: 'put',
+                    } as StorableSpec<unknown>;
+                    
+                    const storableSpec = typeof storable === 'object' && storable !== null
+                        ? { ...storableSpecDefaults, ...storable }
+                        : storableSpecDefaults;
+                    
+                    result = makeStorable(result, storableSpec);
+                }
+                
+                return result;
+            },
+        };
+    };
 
 export default RestApi;

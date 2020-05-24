@@ -15,9 +15,27 @@ Simple mock REST API endpoint
 // indicating that the state update was successful. (Use `Object.freeze()` to enforce.)
 
 export const users = Object.freeze({
-    alice: { name: 'Alice', score: 101 },
-    bob: { name: 'Bob', score: 7 },
-    john: { name: 'John', score: 42 },
+    alice: {
+        name: 'Alice',
+        score: 101,
+        posts: {
+            1: { title: `Alice's Post #1` },
+            2: { title: `Alice's Post #2` },
+        },
+    },
+    bob: {
+        name: 'Bob',
+        score: 7,
+        posts: {
+        },
+    },
+    john: {
+        name: 'John',
+        score: 42,
+        posts: {
+            1: { title: `John's Post #1` },
+        },
+    },
 });
 
 const handleRequest = async request => {
@@ -78,7 +96,7 @@ const handleRequest = async request => {
         } else {
             return { status: 400, data: $msg`Unsupported method ${method} on ${url}` };
         }
-    } else if (matches = url.match(new RegExp('/api/users/([^/]+)'))) {
+    } else if (matches = url.match(new RegExp('^/api/users/([^/]+)/?$'))) {
         const [_, userId] = matches;
         
         if (!Object.prototype.hasOwnProperty.call(users, userId)) {
@@ -112,6 +130,52 @@ const handleRequest = async request => {
         } else {
             return { status: 400, data: $msg`Unsupported method ${method} on ${url}` };
         }
+    } else if (matches = url.match(new RegExp('^/api/users/([^/]+)/posts/?$'))) {
+        const [_, userId] = matches;
+        
+        if (!Object.prototype.hasOwnProperty.call(users, userId)) {
+            return { status: 404 };
+        }
+        
+        const user = users[userId];
+        const posts = user.posts;
+        
+        if (method === 'get') {
+            let postsResponse = posts;
+            
+            if (params.format === 'map') { postsResponse = posts; }
+            if (params.format === 'list') {
+                postsResponse = Object.entries(posts).map(([key, value]) => ({ id: key, ...value }));
+            }
+            
+            return { status: 200, data: postsResponse };
+        } else {
+            return { status: 400, data: $msg`Unsupported method ${method} on ${url}` };
+        }
+    } else if (matches = url.match(new RegExp('^/api/users/([^/]+)/posts/([^/]+)/?$'))) {
+        const [_, userId, postId] = matches;
+        
+        if (!Object.prototype.hasOwnProperty.call(users, userId)) {
+            return { status: 404 };
+        }
+        
+        const user = users[userId];
+        
+        if (!Object.prototype.hasOwnProperty.call(user.posts, postId)) {
+            return { status: 404 };
+        }
+        
+        if (method === 'post') {
+            // Return 409 (Conflict) if the resource exists, 404 (Not Found) if it does not.
+            // See: https://www.restapitutorial.com/lessons/httpmethods.html
+            return { status: 409 };
+        } else if (method === 'get') {
+            let postResponse = post;
+            
+            return { status: 200, data: postResponse };
+        } else {
+            return { status: 400, data: $msg`Unsupported method ${method} on ${url}` };
+        }
     } else if (url === '/api/users/_query' && method === 'get') {
         const user = {
             name: 'Alice',
@@ -133,6 +197,11 @@ export default createAgent({
     adapter: request => {
         return new Promise(async (resolve, reject) => {
             const response = await handleRequest(request);
+            
+            // Debug
+            //if (response.status >= 400) {
+            //    console.info($msg`[agent_mock] [status: ${response.status}] Error: ${response.data}`);
+            //}
             
             // Run `settle` so that we respect axios configuration (`validateStatus` and such)
             settle(resolve, reject, {

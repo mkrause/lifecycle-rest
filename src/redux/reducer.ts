@@ -7,13 +7,13 @@ import * as ObjectUtil from '../util/ObjectUtil.js';
 
 import { Reducer } from 'redux';
 import { Loadable } from '@mkrause/lifecycle-loader';
-import { Step as LocationStep, stepToString } from '../loader/StorablePromise.js';
+import * as Location from '../loader/Location.js';
 import { isLifecycleAction } from './middleware.js';
 
 
 type State = unknown;
 
-type StatePath = Array<LocationStep>;
+type StatePath = Array<Location.Step>;
 
 type ReducerConfig = {
     // The prefix used for lifecycle action types (should match the prefix configured in the middleware)
@@ -28,7 +28,7 @@ type ReducerConfig = {
 
 type Updater = <T>(item : Loadable<T>) => Loadable<T>;
 
-const updatePlainObject = (state : object, step : LocationStep, updateChild : (value : unknown) => unknown) => {
+const updatePlainObject = (state : object, step : Location.Step, updateChild : (value : unknown) => unknown) => {
     // Step must be a string (or number), because we're using it to index into a plain JS object
     if (typeof step !== 'string' && typeof step !== 'number') {
         throw new TypeError($msg`Invalid step ${step} into plain object, need a string or number`);
@@ -44,7 +44,7 @@ const updatePlainObject = (state : object, step : LocationStep, updateChild : (v
     return { ...state, [propKey]: updateChild(state[propKey]) };
 };
 
-const updateArray = (state : Array<unknown>, step : LocationStep, updateChild : (value : unknown) => unknown) => {
+const updateArray = (state : Array<unknown>, step : Location.Step, updateChild : (value : unknown) => unknown) => {
     let index : number;
     if (typeof step === 'number') {
         index = step;
@@ -66,10 +66,10 @@ const updateArray = (state : Array<unknown>, step : LocationStep, updateChild : 
     });
 };
 
-const updateMap = <K, V>(state : Map<K, V>, step : LocationStep, updateChild : (value : V) => V) => {
+const updateMap = <K, V>(state : Map<K, V>, step : Location.Step, updateChild : (value : V) => V) => {
     const mapUpdated = new Map(state);
     
-    const key = step as K; // Assert that the step is a valid key
+    const key = step as unknown as K; // Assert that the step is a valid key
     
     if (!state.has(key)) {
         throw new TypeError($msg`Missing key ${key} in map ${state}`);
@@ -87,17 +87,17 @@ const supportsSetIn = (obj : object) : obj is { setIn : (path : StatePath, value
     ObjectUtil.hasProp(obj, 'setIn') && typeof obj.setIn === 'function';
 
 type ImmCompatible = {
-    has : (step : LocationStep) => boolean,
-    get : (step : LocationStep) => unknown,
-    set : (step : LocationStep, value : unknown) => State,
+    has : (step : Location.Step) => boolean,
+    get : (step : Location.Step) => unknown,
+    set : (step : Location.Step, value : unknown) => State,
 };
 const isImmCompatible = (obj : object) : obj is ImmCompatible =>
         'has' in obj && 'get' in obj && 'set' in obj;
 
-const updateImmutable = (state : ImmCompatible, step : LocationStep, updateChild : (value : unknown) => unknown) => {
+const updateImmutable = (state : ImmCompatible, step : Location.Step, updateChild : (value : unknown) => unknown) => {
     const key = step;
     
-    if (step.index) {
+    if (Location.isIndexStep(step)) {
         const index = step.index;
         if (state.has(index)) {
             return state.set(index, updateChild(state.get(index)));
@@ -160,10 +160,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         } catch (e) {
             if (e instanceof TypeError) {
                 // Add path information to exception message
-                throw new TypeError(`${e.message} [at ${path}]`);
-            } else {
-                throw e;
+                // @ts-ignore
+                e.location = path;
+                //throw new TypeError(`${e.message} [at ${path}]`);
             }
+            throw e;
         }
     }
     
@@ -173,10 +174,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         } catch (e) {
             if (e instanceof TypeError) {
                 // Add path information to exception message
-                throw new TypeError(`${e.message} [at ${path}]`);
-            } else {
-                throw e;
+                // @ts-ignore
+                e.location = path;
+                //throw new TypeError(`${e.message} [at ${path}]`);
             }
+            throw e;
         }
     } else if (Array.isArray(state)) {
         try {
@@ -184,10 +186,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         } catch (e) {
             if (e instanceof TypeError) {
                 // Add path information to exception message
-                throw new TypeError(`${e.message} [at ${path}]`);
-            } else {
-                throw e;
+                // @ts-ignore
+                e.location = path;
+                //throw new TypeError(`${e.message} [at ${path}]`);
             }
+            throw e;
         }
     } else if (state instanceof Map) {
         try {
@@ -195,10 +198,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         } catch (e) {
             if (e instanceof TypeError) {
                 // Add path information to exception message
-                throw new TypeError(`${e.message} [at ${path}]`);
-            } else {
-                throw e;
+                // @ts-ignore
+                e.location = path;
+                //throw new TypeError(`${e.message} [at ${path}]`);
             }
+            throw e;
         }
     } else {
         throw new TypeError($msg`Cannot update value of unknown state type ${state} [at ${path}]`);
@@ -234,6 +238,13 @@ export default (configPartial : Partial<ReducerConfig> = {}) : Reducer<State> =>
         }
         */
         
-        return updateIn(state, action.path, action.update);
+        try {
+            return updateIn(state, action.path, action.update);
+        } catch (e) {
+            if (e.location && Location.isLocation(e.location)) {
+                e.message += ` [at ${Location.locationAsString(e.location)}`;
+            }
+            throw e;
+        }
     };
 };

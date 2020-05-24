@@ -1,19 +1,18 @@
 
 import $msg from 'message-tag';
-import { AxiosInstance } from 'axios';
+import type { AxiosInstance } from 'axios';
 
 import { Schema } from '../schema/Schema.js';
 
 import type { AdapterT } from './Adapter.js';
+import * as Location from './Location.js';
 
-
-export type Index = string;
 
 export type Agent = AxiosInstance;
-export type ResourcePathStep = string | { index : Index };
-export type ResourcePath = Array<ResourcePathStep>;
+export type ResourcePathStep = Location.Step;
+export type ResourcePath = Location.Location;
 export type URI = string;
-export type StorePath = Array<ResourcePathStep>;
+export type StorePath = Location.Location;
 
 export type Options = {
     agent : Agent,
@@ -30,6 +29,7 @@ export type Context = {
 
 export type ResourceDefinition<S extends Schema> = Context & {
     schema : S,
+    methods : any, // FIXME
     adapter : AdapterT,
 };
 
@@ -62,16 +62,6 @@ export type ResourceSpec<S extends Schema> = {
     },
 };
 
-const stringFromLabel = (label : ResourcePathStep) => {
-    if (typeof label === 'string') {
-        return label;
-    } else if (typeof label === 'object' && label !== null && 'index' in label) {
-        return String(label.index);
-    } else {
-        throw new TypeError($msg`Unexpected label, given ${label}`);
-    }
-};
-
 // Instantiate the given partial spec to a complete spec, given context information
 export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, Spec extends Partial<SpecT>>(
         context : Context,
@@ -86,8 +76,9 @@ export const intantiateSpec = <S extends Schema, SpecT extends ResourceSpec<S>, 
         
         // Add context-dependent defaults
         const defaultsWithContext = merge(defaults, {
-            store: label === null ? defaults.store : [label],
-            uri: label === null ? defaults.uri : stringFromLabel(label),
+            // Note: do not use implicit default if the label is an index (otherwise we add it twice)
+            store: label === null || Location.isIndexStep(label) ? defaults.store : [label],
+            uri: label === null || Location.isIndexStep(label) ? defaults.uri : Location.stepAsString(label),
         }) as SpecT;
         
         // FIXME: the result of `merge` (using ts-toolbelt `Merge`) does not seem to be assignable to `SpecT` here

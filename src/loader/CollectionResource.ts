@@ -11,7 +11,8 @@ import { Schema, DecodeError } from '../schema/Schema.js';
 import * as t from 'io-ts';
 
 import { AxiosResponse } from 'axios';
-import type { Index, ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
+import * as Location from './Location.js';
+import type { ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
 import { resourceDef, intantiateSpec } from './Resource.js';
 
 import Adapter, { AdapterT } from './Adapter.js';
@@ -29,7 +30,7 @@ export type CollResourceSpec<S extends CollSchema> = ResourceSpec<S>
 // Generic collection resource type (i.e. as general as we can define it without knowing the actual spec)
 export type CollResourceT<S extends CollSchema> = Resource<S>
     & {
-        (index : Index) : Resource<Schema>,
+        (index : Location.Index) : Resource<Schema>,
         entrySchema : Schema,
     };
 
@@ -138,7 +139,7 @@ const collectionDefaults = {
             },
     },
     resources: {},
-    entry: (index : Index) => { throw new TypeError($msg`Cannot construct entry`); },
+    entry: (index : Location.Index) => { throw new TypeError($msg`Cannot construct entry`); },
 };
 
 export const CollectionResource = <S extends CollSchema, Spec extends Partial<CollResourceSpec<S>>>(
@@ -150,7 +151,7 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
         type ResourcesFromSpec<R extends CollResourceSpec<S>['resources']> =
             { [key in keyof R] : R[key] extends (context : Context) => infer R ? R : never };
         type EntryFromSpec<E extends CollResourceSpec<S>['entry']> =
-            E extends (context : Context) => infer R ? (index : Index) => R : never;
+            E extends (context : Context) => infer R ? (index : Location.Index) => R : never;
         
         // The interface of the resource, split up into its base components
         type ResourceComponents = {
@@ -164,8 +165,6 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
             & ResourceComponents['methods']
             & ResourceComponents['resources']
             & ResourceComponents['entry'];
-        
-        // return null as unknown as (context : Context) => CollResource;
         
         const makeResource = (context : Context) : CollResource => {
             type SpecInstantiated = Omit<CollResourceSpec<S>, 'methods' | 'resources' | 'entry'> & {
@@ -186,17 +185,13 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
             }
             
             const entry = spec.entry;
-            const makeEntry = ((index : Index) => {
+            const makeEntry = ((index : Location.Index) => {
                 const entryContext = {
                     options: context.options,
                     agent: context.agent,
                     path: [...spec.path, { index }],
-                    
-                    //store: [...spec.store, index],
-                    store: spec.store, // FIXME
-                    
-                    //uri: concatUri([spec.uri, String(index)]),
-                    uri: spec.uri, // FIXME (currently index already added during `instantiateSpec`)
+                    store: [...spec.store, { index }],
+                    uri: concatUri([spec.uri, Location.indexAsString(index)]),
                 };
                 return (entry as any)(entryContext);
             }) as ResourceComponents['entry'];
@@ -229,53 +224,3 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
     };
 
 export default CollectionResource;
-
-
-/*
-const testContext = {
-    options : {},
-    path : [],
-    uri : '',
-    store : [],
-    agent : null as any,
-};
-const api0 = CollectionResource(t.string, {
-    methods: {
-        foo() { return 42 as const; },
-    },
-    resources: {
-        coll: null as unknown as {
-            schema : typeof t.string,
-            (context : Context) : { [resourceDef] : any, foo : () => 10 },
-        },
-    },
-    entry: null as unknown as {
-        schema : typeof t.string,
-        (context : Context) : { [resourceDef] : any, foo : () => 11 },
-    },
-})(testContext);
-/*
-const api = CollectionResource(t.string, {
-    methods: {
-        foo() { return 42 as const; }
-    },
-    resources: {
-        coll: CollectionResource(t.string, {
-            methods: {
-                foo() { return 44 as const; }
-            },
-            resources: {},
-        }),
-    },
-    entry: CollectionResource(t.string, {
-        methods: {
-            foo() { return 45 as const; }
-        },
-        resources: {},
-    }),
-})(testContext);
-* /
-
-// const test0 : (typeof api0) = null;
-const test0 : never = api0('foo');
-*/
