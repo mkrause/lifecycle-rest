@@ -93,13 +93,13 @@ const defaultMethods = {
             const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const entrySchema = this.entrySchema;
-            const entryUtil = adapter.with(entrySchema);
+            const entryAdapter = adapter.with(entrySchema);
             
-            const instanceEncoded = entryUtil.encode(instance);
+            const instanceEncoded = entryAdapter.encode(instance);
             
             const response = await agent.post(spec.uri, instanceEncoded, { params });
-            const entryResult : t.TypeOf<typeof entrySchema> = entryUtil.report(
-                schema.decode(entryUtil.parse(response))
+            const entryResult : t.TypeOf<typeof entrySchema> = entryAdapter.report(
+                schema.decode(entryAdapter.parse(response))
             );
             
             return entryResult;
