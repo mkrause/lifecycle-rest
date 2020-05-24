@@ -1,13 +1,10 @@
-// @flow
-declare var describe : Function;
-declare var it : Function;
 
+/*
 import { expect } from 'chai';
 
-import { status, Loadable } from '@mkrause/lifecycle-loader';
+import { status, Loadable, LoadError } from '@mkrause/lifecycle-loader';
 
-import { LoadError } from '../../../src/loader/LoadablePromise.js';
-import StorablePromise from '../../../src/loader/StorablePromise.js';
+import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
 
 
 describe('StorablePromise', () => {
@@ -17,7 +14,7 @@ describe('StorablePromise', () => {
         it('should construct a StorablePromise', () => {
             const promise = new StorablePromise(
                 (resolve, reject) => { resolve(42); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -37,7 +34,7 @@ describe('StorablePromise', () => {
         it('should implement then() (for resolved)', async () => {
             const promise = new StorablePromise(
                 (resolve, reject) => { resolve(42); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -55,7 +52,7 @@ describe('StorablePromise', () => {
         it('should implement then() (for rejected)', async () => {
             const promise = new StorablePromise(
                 (resolve, reject) => { reject(new Error('Failed')); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -82,7 +79,7 @@ describe('StorablePromise', () => {
         it('should work with await (for resolved)', async () => {
             const result = await new StorablePromise(
                 (resolve, reject) => { resolve(42); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -98,7 +95,7 @@ describe('StorablePromise', () => {
             try {
                 await new StorablePromise(
                     (resolve, reject) => { reject(new Error('Failed')); },
-                    Loadable(),
+                    Loadable(null),
                     spec
                 );
                 
@@ -121,7 +118,7 @@ describe('StorablePromise', () => {
             
             const promise = new StorablePromise(
                 (resolve, reject) => { resolve(42); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -138,7 +135,7 @@ describe('StorablePromise', () => {
     describe('from promise', () => {
         it('should be constructable from plain promise', async () => {
             const promise = StorablePromise.from(
-                Loadable(),
+                Loadable(null),
                 spec,
                 Promise.resolve(42)
             );
@@ -167,7 +164,7 @@ describe('StorablePromise', () => {
         it('should be convertable to plain promise', async () => {
             const promise = new StorablePromise(
                 (resolve, reject) => { resolve(42); },
-                Loadable(),
+                Loadable(null),
                 spec
             );
             
@@ -185,3 +182,4 @@ describe('StorablePromise', () => {
         });
     });
 });
+*/

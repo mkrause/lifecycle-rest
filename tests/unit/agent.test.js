@@ -1,6 +1,3 @@
-// @flow
-declare var describe : Function;
-declare var it : Function;
 
 import { expect } from 'chai';
 import sinon from 'sinon';
@@ -9,11 +6,12 @@ import $uri from 'uri-tag';
 import http from 'http';
 import { PassThrough } from 'stream';
 
-import createAgent from '../../src/agent.js';
+import createAgent from '../../lib-esm/agent.js';
 
 
 describe('agent', () => {
     it('should be usable without any options', async () => {
+        // Mock function for `http.request()` (which axios uses by default)
         const requestMock = sinon.stub(http, 'request')
             .callsFake((options, callback) => {
                 // Create a mock http.IncomingMessage (to be passed to the callback)

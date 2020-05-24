@@ -1,50 +1,65 @@
 {
     "name": "@mkrause/lifecycle-rest",
     "version": "0.2.0",
-    "description": "Lifecycle REST API loader",
     "author": "mkrause",
     "license": "MIT",
     "repository": "https://github.com/mkrause/lifecycle-rest",
-    "es2015": "src/index.js",
-    "main": "lib-cjs/index.js",
-    "module": "lib-esm/index.js",
-    "browser": "lib-esm/index.js",
+    "description": "Lifecycle REST API loader",
+    "keywords": [],
     "files": [
         "src/",
         "lib-cjs/",
-        "lib-esm/"
+        "lib-esm/",
+        "typings/"
     ],
+    "typings": "./typings/index.d.ts",
+    "engines": {
+        "node": ">= 10.13"
+    },
+    "main": "./lib-cjs/index.js",
+    "module": "./lib-esm/index.js",
     "scripts": {
-        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --source-maps inline",
-        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --source-maps inline",
-        "test": "NODE_ENV=development BABEL_ENV=cjs mocha --require @babel/register --recursive tests",
-        "prepare": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs",
-        "prepublishOnly": "npm run build:esm && npm run build:cjs && flow-copy-source src lib-cjs"
+        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
+        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
+        "types": "tsc --project ./tsconfig.decl.json",
+        "test:unit": "npm run build:esm && NODE_ENV=development BABEL_ENV=cjs mocha --require=@babel/register --recursive tests/unit",
+        "test": "npm run test:unit && tsc && echo '[tsc] success'",
+        "prepublishOnly": "npm run build:esm && npm run build:cjs && npm run types"
     },
     "devDependencies": {
-        "@babel/core": "^7.6.4",
-        "@babel/register": "^7.6.2",
-        "@babel/cli": "^7.6.4",
-        "@babel/preset-env": "^7.6.3",
-        "@babel/plugin-proposal-class-properties": "^7.5.5",
+        "@babel/core": "^7.9.6",
+        "@babel/register": "^7.9.0",
+        "@babel/cli": "^7.8.4",
+        "@babel/preset-env": "^7.9.6",
+        "@babel/plugin-proposal-class-properties": "^7.8.3",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
-        "@babel/preset-flow": "^7.0.0",
-        "flow-bin": "^0.110.0",
-        "flow-copy-source": "^2.0.8",
-        "mocha": "^6.2.2",
+        "@babel/preset-typescript": "^7.9.0",
+        "typescript": "^3.9.3",
+        "@types/node": "^14.0.5",
+        "@types/uuid": "^8.0.0",
+        "tsd": "^0.11.0",
+        "mocha": "^7.2.0",
         "chai": "^4.2.0",
-        "sinon": "^7.5.0"
+        "chai-as-promised": "^7.1.1",
+        "chai-match-pattern": "^1.1.0",
+        "sinon": "^9.0.2",
+        "redux": "^4.0.5",
+        "http-status-codes": "^1.4.0"
+    },
+    "peerDependencies": {
+        "redux": "^4.0.0"
     },
     "dependencies": {
-        "uuid": "^3.3.3",
-        "@mkrause/match": "^1.2.2",
-        "moment": "^2.24.0",
-        "immutable": "^4.0.0-rc.12",
-        "uri-tag": "^1.1.1",
-        "message-tag": "^0.4.1",
-        "object-merge-advanced": "^10.11.3",
-        "axios": "^0.19.0",
-        "@mkrause/lifecycle-loader": "^0.1.2",
-        "redux": "^4.0.4"
+        "ts-toolbelt": "6.9.0",
+        "case-match": "^2.0.1",
+        "uuid": "^8.1.0",
+        "uri-tag": "^1.2.0",
+        "message-tag": "^0.5.1",
+        "object-merge-advanced": "^10.11.21",
+        "axios": "^0.19.2",
+        "fp-ts": "^2.6.1",
+        "io-ts": "^2.2.3",
+        "@mkrause/lifecycle-loader": "^0.2.3",
+        "immutable": "^4.0.0-rc.12"
     }
 }

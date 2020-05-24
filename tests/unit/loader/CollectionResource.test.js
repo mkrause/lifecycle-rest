@@ -1,187 +1,125 @@
-// @flow
-declare var describe : Function;
-declare var it : Function;
 
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
+import * as t from 'io-ts';
+
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../../src/agent.js';
-import StorablePromise from '../../../src/loader/StorablePromise.js';
-import { SimpleItem } from '../../../src/loader/Resource.js';
-import CollectionResource from '../../../src/loader/CollectionResource.js';
+import createAgent from '../../../lib-esm/agent.js';
+// import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
+// import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
+import { Unknown } from '../../../lib-esm/schema/Schema.js';
+import agentMock, { users as apiMockUsers } from '../../resources/agent_mock.js';
 
+import adapter from '../../../lib-esm/loader/Adapter.js';
+import { resourceDef } from '../../../lib-esm/loader/Resource.js';
+import ItemResource from '../../../lib-esm/loader/ItemResource.js';
+import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
+
+import ResourceCommonTests from './ResourceCommonTests.js';
+
+
+require('util').inspect.defaultOptions.depth = Infinity;
+
+chai.use(chaiAsPromised);
 
 describe('CollectionResource', () => {
-    class User {
-        static instantiate() {
-            return {
-                name: null,
-            };
-        }
-        
-        static decode(instanceEncoded) {
-            return instanceEncoded;
-        }
-        
-        static encode(instance) {
-            return instance;
-        }
-    }
-    
-    class UsersCollection {
-        static initialize() {
-            return {};
-        }
-        
-        static decode(instanceEncoded) {
-            if (Array.isArray(instanceEncoded)) {
-                return instanceEncoded.reduce(
-                    (acc, item) => {
-                        return { ...acc, [item.user_id]: item };
-                    },
-                    {}
-                );
-            } else if (typeof instanceEncoded === 'object' && instanceEncoded !== null) {
-                return instanceEncoded;
-            } else {
-                throw new TypeError($msg`Unknown users collection type ${instanceEncoded}`);
-            }
-        }
-        
-        static encode(instance) {
-            return instance;
-        }
-    }
-    
-    const agentMock = createAgent({
-        adapter: async request => {
-            const { method, url, params, headers } = request;
-            
-            const users = [
-                { user_id: 'user42', name: 'John' },
-                { user_id: 'user43', name: 'Alice' },
-            ];
-            
-            let matches;
-            if (url === '/users' && method === 'get') {
-                if (headers['Accept'] && headers['Accept'] === 'application/vnd.query+json') {
-                    const usersQueried = users.filter(user => user.name === params.name);
-                    
-                    const response = {
-                        items: usersQueried,
-                        metadata: {
-                            total: 999,
-                        },
-                    };
-                    return Promise.resolve({ data: response });
-                }
-                
-                return Promise.resolve({ data: users });
-            } else if (url === '/users' && method === 'post') {
-                const user = User.decode(JSON.parse(request.data));
-                const userWithId = { ...user, user_id: 'user44' };
-                return Promise.resolve({ data: User.encode(userWithId) });
-            } else if ((matches = url.match(/^[/]users[/]([^/]+)$/)) && method === 'get') {
-                const user = users.filter(user => user.user_id === matches[1])[0];
-                return Promise.resolve({ data: user });
-            } else {
-                throw new Error($msg`Unknown route ${method} ${url}`);
-            }
-        },
-    });
-    
-    const context = {
-        agent: agentMock,
-        config: {},
+    const contextTrivial = {
+        agent: createAgent({
+            adapter: async request => { throw new Error(`Not supported`); },
+        }),
+        options: { adapter },
         path: [],
-        store: [],
         uri: '',
+        store: [],
     };
     
-    it('should support method list()', async () => {
-        const api = CollectionResource(UsersCollection, {
-            uri: '/users',
-        })(context);
-        
-        const users = await api.list();
-        
-        expect(users).to.deep.equal({
-            user42: { user_id: 'user42', name: 'John' },
-            user43: { user_id: 'user43', name: 'Alice' },
+    ResourceCommonTests(CollectionResource);
+    
+    describe('entry function', () => {
+        it('should use a relative path appending the index', () => {
+            const resource = CollectionResource(Unknown, {
+                path: ['x'],
+                uri: 'x',
+                store: ['x'],
+                entry: ItemResource(Unknown),
+            })(contextTrivial);
+            
+            const entryString = resource('index');
+            expect(entryString).property(resourceDef).property('path').to.deep.equal(['x', { index: 'index' }]);
+            expect(entryString).property(resourceDef).property('uri').to.equal('x/index');
+            expect(entryString).property(resourceDef).property('store').to.deep.equal(['x', { index: 'index' }]);
+            
+            const entryNumber = resource(42);
+            expect(entryNumber).property(resourceDef).property('path').to.deep.equal(['x', { index: 42 }]);
+            expect(entryNumber).property(resourceDef).property('uri').to.equal('x/42');
+            expect(entryNumber).property(resourceDef).property('store').to.deep.equal(['x', { index: 42 }]);
         });
     });
     
-    it('should support indexing into', async () => {
-        const api = CollectionResource(UsersCollection, {
-            uri: '/users',
-        })(context);
+    // Test the default methods (without doing any real schema encoding/decoding yet, i.e. use `Unknown`)
+    describe('default methods (with trivial schema)', () => {
+        // Use `agentMock` as the agent, see `tests/resources/agent_mock.js` for the definition
+        const contextWithAgent = {
+            agent: agentMock,
+            options: { adapter },
+            path: [],
+            uri: '',
+            store: [],
+        };
         
-        const user = await api('user42').get();
-        
-        expect(user).to.deep.equal({ user_id: 'user42', name: 'John' });
-    });
-    
-    it('should support method create()', async () => {
-        const api = CollectionResource(UsersCollection, {
-            uri: '/users',
-        })(context);
-        
-        const user = await api.create({ name: 'Bob' });
-        
-        expect(user).to.deep.equal({ user_id: 'user44', name: 'Bob' });
-    });
-    
-    it('should support custom methods', async () => {
-        const api = CollectionResource(UsersCollection, {
-            uri: '/users',
-            methods: {
-                query({ spec, agent }, query) {
-                    return StorablePromise.from(
-                        Loadable(),
-                        {
-                            location: spec.store,
-                            operation: 'merge',
-                            accessor: queryResult => queryResult.users,
+        const apiStandard = ItemResource(Unknown, {
+            uri: '/api',
+            resources: {
+                users: CollectionResource(Unknown, {
+                    entry: ItemResource(Unknown, {
+                        resources: {
+                            posts: CollectionResource(Unknown),
                         },
-                        agent.get('/users', { headers: { 'Accept': 'application/vnd.query+json' }, params: query })
-                            .then(response => {
-                                const parse = response => response.data;
-                                const decode = UsersCollection.decode;
-                                
-                                const responseParsed = parse(response);
-                                
-                                return {
-                                    users: decode(responseParsed.items),
-                                    metadata: {
-                                        total: responseParsed.metadata.total,
-                                    },
-                                };
-                            }),
-                    );
-                },
+                    }),
+                }),
             },
-        })(context);
+        })(contextWithAgent);
         
-        const resultPromise = api.query({ name: 'Alice' });
-        
-        expect(resultPromise).to.be.an.instanceOf(StorablePromise);
-        expect(resultPromise.spec.operation).to.equal('merge');
-        expect(resultPromise.spec.accessor).satisfy(accessor => {
-            return accessor({ users: 'foo' }) === 'foo';
+        describe('method `get`', () => {
+            it('should be supported as default method', async () => {
+                const result = await apiStandard.users.get();
+                
+                expect(result).to.deep.equal(apiMockUsers);
+            });
         });
         
-        const result = await resultPromise;
+        describe('method `put`', () => {
+            // TODO
+            it('should be supported as default method');
+        });
         
-        expect(result).to.deep.equal({
-            users: { user43: { user_id: 'user43', name: 'Alice' } },
-            metadata: {
-                total: 999,
-            },
+        describe('method `patch`', () => {
+            // TODO
+            it('should be supported as default method');
+        });
+        
+        describe('method `delete`', () => {
+            // TODO
+            it('should be supported as default method');
+        });
+        
+        describe('method `post`', () => {
+            // TODO
+            it('should be supported as default method');
+        });
+        
+        describe('method `create`', () => {
+            it('should be supported as default method', async () => {
+                const result = await apiStandard.users.create({ name: 'Zackary' });
+                
+                expect(result).to.deep.equal({ user_id: 'user42', name: 'Zackary' });
+            });
         });
     });
 });

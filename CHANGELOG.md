@@ -1,8 +1,11 @@
 
 # Changelog
 
-- v0.2.x
-  - Upgrade to lifecycle-loader v0.1.2
+- v0.3.x
+  - Rewrite in TypeScript.
 
-- v0.1.x
+- v0.2.x
+  - Upgrade to lifecycle-loader v0.1
+
+- v0.0.x
   - Initial version.
