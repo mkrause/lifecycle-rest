@@ -11,6 +11,21 @@ import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
+const report = (decodeResult : t.Validation<unknown>) => {
+    if (decodeResult._tag === 'Right') {
+        return decodeResult.right;
+    } else {
+        const errors = decodeResult.left;
+        const report = PathReporter.report(decodeResult);
+        
+        let message = `Failed to decode response:\n` + report.map(error =>
+            `\n- ${error}`
+        );
+        
+        throw new DecodeError(message, errors);
+    }
+};
+
 const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema : S) => ({
     with(schema : Schema) {
         return makeAdapter(resource, schema);
@@ -19,21 +34,6 @@ const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema 
     parse(response : AxiosResponse) {
         if (response.status === 204) { return null; }
         return response.data;
-    },
-    
-    report(decodeResult : t.Validation<unknown>) {
-        if (decodeResult._tag === 'Right') {
-            return decodeResult.right;
-        } else {
-            const errors = decodeResult.left;
-            const report = PathReporter.report(decodeResult);
-            
-            let message = `Failed to decode response:\n` + report.map(error =>
-                `\n- ${error}`
-            );
-            
-            throw new DecodeError(message, errors);
-        }
     },
     
     decode(input : unknown) {
@@ -47,7 +47,6 @@ const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema 
         
         return schema.encode(instance);
     },
-    
     
     format(item : unknown) { return item },
     

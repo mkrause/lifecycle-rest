@@ -61,7 +61,7 @@ const defaultMethods = {
             
             const schemaPartial = adapter.partial(schema);
             
-            const instanceEncoded = schema.encode(instance);
+            const instanceEncoded = schemaPartial.encode(instance);
             
             const response = await agent.patch(spec.uri, instanceEncoded, { params });
             return adapter.report(schema.decode(adapter.parse(response)));
