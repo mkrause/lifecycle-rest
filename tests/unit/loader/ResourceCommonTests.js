@@ -1,29 +1,20 @@
 
 import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 
 import $uri from 'uri-tag';
 import $msg from 'message-tag';
 
-import * as t from 'io-ts';
-
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
 import createAgent from '../../../lib-esm/agent.js';
-// import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
-// import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
 import { Unknown } from '../../../lib-esm/schema/Schema.js';
-import agentMock from '../../resources/agent_mock.js';
 
 import adapter from '../../../lib-esm/loader/Adapter.js';
 import { resourceDef } from '../../../lib-esm/loader/Resource.js';
-import ItemResource from '../../../lib-esm/loader/ItemResource.js';
-import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
 
 
-chai.use(chaiAsPromised);
-
+// Tests for the common `Resource` subset that all resource implementations share
 export default makeResource => {
     const contextTrivial = {
         agent: createAgent({

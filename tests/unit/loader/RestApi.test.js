@@ -20,15 +20,11 @@ describe('RestApi', () => {
         adapter: async request => { throw new Error(`Not supported`); },
     });
     
-    it('should require an agent', () => {
+    it('should require configuration as argument', () => {
         expect(() => { RestApi(); }).to.throw(TypeError);
     });
     
-    it('should require a resource creator', () => {
-        expect(() => { RestApi({ agent }); }).to.throw(TypeError);
-    });
-    
-    it('should require a resource creator', () => {
+    it('should require a resource creator as argument', () => {
         expect(() => { RestApi({ agent }); }).to.throw(TypeError);
     });
     

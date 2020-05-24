@@ -132,6 +132,10 @@ const collectionDefaults = {
         
         create<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
+                // TODO: the store `location` here is wrong, need to add the `index`. Also need to support the
+                // possibility of the `index` only being available in the response (so `location` as Promise).
+                // In order to do so, we also need a way to ask the consumer to extract the index from the response.
+                
                 return makeStorable(Function.prototype.call.call(defaultMethods.create, this, instance, params), {
                     location: this[resourceDef].store,
                     operation: 'put',

@@ -8,18 +8,17 @@ import * as Location from './Location.js';
 
 
 /*
-Extension of Promise, where the promise object also carries instructions on how the promise result is to be
-stored in a (redux) store.
+Extension of `Promise`, where the promise object also carries instructions on how the promise result is intended
+to be stored in a (redux) store.
 */
-
-type Item = unknown; // TODO
 
 export const storableKey = Symbol('storable');
 
-export type StorableSpec<T> = {
-    // The location where this item is to be stored. Each "step" is either a string (object key), or
-    // could be anything else (e.g. index into a hash map) as long as we can convert it to a string.
-    // Can be a promise, if the location is not known ahead of time (e.g. depends on a dynamically created ID).
+// Spec for storing a resource of type `R` in the store as an item of type `T`
+export type StorableSpec<R, T = unknown> = {
+    // The location where this item is to be stored. Each "step" is either a string (object key), or could be
+    // anything else (e.g. index into a hash map) as long as we can convert it to a string.
+    // Can be a promise, if the location is not known ahead of time (e.g. it depends on a dynamically created ID).
     location : Location.Location | Promise<Location.Location>,
     
     // XXX alternatively, we could enforce `location` to always be known (no promise) up until the last step, and
@@ -27,24 +26,24 @@ export type StorableSpec<T> = {
     //getKey : () => null | string,
     
     // Function that transforms the promise result to the item that we can store
-    accessor : (result : T) => Item,
+    accessor : (result : R) => T,
     
     // The operation to perform on the store
     operation :
         | 'skip' // Do nothing
         | 'clear' // Remove the current item (by replacing it with an empty/invalidated item)
         | 'put' // Replace the current item with the given one
-        | 'merge' // Merge the current item with the given one
+        | 'merge' // Merge the current item with the given one (e.g. for collections to merge entries)
         | 'update', // Apply a function that takes the current value and returns an updated version
 };
 
-export type StorablePromise<T> = Promise<T>
-    // Needed in order to be able to dispatch a storable promise in redux (i.e. must be an action)
-    & ReduxAction<typeof storableKey>
-    & { [storableKey] : StorableSpec<T> };
+export type StorablePromise<R> = Promise<R>
+    & { [storableKey] : StorableSpec<R> }
+    // `ReduxAction` needed in order to be able to dispatch a storable promise in redux (i.e. it must be an action)
+    & ReduxAction<typeof storableKey>;
 
-export const isStorable = <T>(value : unknown) : value is StorablePromise<T> => {
-    if (typeof value !== 'object' || value === null) { return false; }
+export const isStorable = <R>(value : unknown) : value is StorablePromise<R> => {
+    if (!ObjectUtil.isObject(value)) { return false; }
     
     if (!ObjectUtil.hasProp(value, 'type') || value.type !== storableKey) {
         return false;
@@ -60,15 +59,15 @@ export const isStorable = <T>(value : unknown) : value is StorablePromise<T> => 
 
 const specDefault = {
     location: [],
-    accessor: <T>(result : T) => result,
+    accessor: <R>(result : R) : R => result,
     operation: 'put',
 };
 
-export const makeStorable = <T>(promise : Promise<T>, spec : Partial<StorableSpec<T>>) : StorablePromise<T> => {
-    const specWithDefaults = { ...specDefault, ...spec } as StorableSpec<T>;
+export const makeStorable = <R>(promise : Promise<R>, spec : Partial<StorableSpec<R>>) : StorablePromise<R> => {
+    const specWithDefaults = { ...specDefault, ...spec } as StorableSpec<R>;
     
     const promiseCopy = promise.then(); // Copy promise before mutating it
-    const storablePromise : StorablePromise<T> = Object.assign(promiseCopy, {
+    const storablePromise : StorablePromise<R> = Object.assign(promiseCopy, {
         // Make this promise into a valid Redux action
         type: storableKey as typeof storableKey, // `as` needed to make this a `unique symbol`
         
@@ -97,7 +96,7 @@ const specDefault = {
 
 // Promise for some item to be stored in a (global) store. Includes a specification that describes
 // how it's intended to be stored.
-export default class StorablePromise<T> extends Promise<T> {
+export default class StorablePromise<R> extends Promise<R> {
     spec : Spec;
     
     // Set the species to regular `Promise`, so that `then()` chaining will not try to create

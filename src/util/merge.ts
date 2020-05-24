@@ -12,7 +12,7 @@ const optionsDefaults = {
     cb: (first : any, second : any, result : any) => {
         if (Array.isArray(second)) {
             // Hard merge arrays
-            // TODO: allow a may to override this behavior
+            // TODO: allow a way to override this behavior
             return second;
         } else {
             return result;
