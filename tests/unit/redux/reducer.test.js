@@ -16,18 +16,28 @@ import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 chai.use(chaiMatchPattern);
 
-// Polyfill for Object.entries for Node v10
+// Polyfill for Object.entries/Object.fromEntries for Node v10
 if (!Object.entries) {
-  Object.entries = obj => {
-    const ownProps = Object.keys(obj);
-    let i = ownProps.length;
-    const resArray = new Array(i);
-    while (i--) {
-      resArray[i] = [ownProps[i], obj[ownProps[i]]];
-    }
-    
-    return resArray;
-  };
+    Object.entries = obj => {
+        const ownProps = Object.keys(obj);
+        let i = ownProps.length;
+        const resArray = new Array(i);
+        while (i--) {
+            resArray[i] = [ownProps[i], obj[ownProps[i]]];
+        }
+        
+        return resArray;
+    };
+}
+if (!Object.fromEntries) {
+    Object.fromEntries = _entries => {
+        const entries = Array.isArray(_entries) ? _entries : [..._entries];
+        
+        return entries.reduce(
+            (acc, [key, value]) => { acc[key] = value; return acc; },
+            {}
+        );
+    };
 }
 
 
