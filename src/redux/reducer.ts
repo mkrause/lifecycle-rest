@@ -129,12 +129,17 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
     // Reject updating a child of an empty state type. The user is expected to at the very least initialize
     // state to an object or some other supported data structure.
     if (state === undefined || state === null) {
-        debugger;
-        throw new TypeError($msg`Cannot set property in empty state, given ${state} [at ${path}]`);
+        throw Object.assign(
+            new TypeError($msg`Cannot set property in empty state, given ${state}`),
+            { location: path },
+        );
     }
     
     if (!ObjectUtil.isObject(state)) {
-        throw new TypeError($msg`Cannot set property on primitive, given ${state} [at ${path}]`);
+        throw Object.assign(
+            new TypeError($msg`Cannot set property on primitive, given ${state}`),
+            { location: path },
+        );
     }
     
     // Immutable support
@@ -151,7 +156,7 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
             return state.set(step, setIn(state.get(step), tail, value));
         } else {
             // Cannot create steps "in between", would require us to know what constructor to use
-            throw new TypeError($msg`No such state at ${step} [at ${path}]`);
+            throw new TypeError($msg`No such state at ${step}`);
         }
         */
         
@@ -159,10 +164,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
             return updateImmutable(state, step, (value : unknown) => updateIn(value, tail, updater));
         } catch (e) {
             if (e instanceof TypeError) {
-                // Add path information to exception message
-                // @ts-ignore
-                e.location = path;
-                //throw new TypeError(`${e.message} [at ${path}]`);
+                // Add location information to exception message (if not added already)
+                throw Object.assign(e, {
+                    // @ts-ignore
+                    location: e.location ?? path,
+                });
             }
             throw e;
         }
@@ -173,10 +179,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
             return updatePlainObject(state, step, (value : unknown) => updateIn(value, tail, updater));
         } catch (e) {
             if (e instanceof TypeError) {
-                // Add path information to exception message
-                // @ts-ignore
-                e.location = path;
-                //throw new TypeError(`${e.message} [at ${path}]`);
+                // Add location information to exception message (if not added already)
+                throw Object.assign(e, {
+                    // @ts-ignore
+                    location: e.location ?? path,
+                });
             }
             throw e;
         }
@@ -185,10 +192,11 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
             return updateArray(state, step, (value : unknown) => updateIn(value, tail, updater));
         } catch (e) {
             if (e instanceof TypeError) {
-                // Add path information to exception message
-                // @ts-ignore
-                e.location = path;
-                //throw new TypeError(`${e.message} [at ${path}]`);
+                // Add location information to exception message (if not added already)
+                throw Object.assign(e, {
+                    // @ts-ignore
+                    location: e.location ?? path,
+                });
             }
             throw e;
         }
@@ -197,15 +205,19 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
             return updateMap(state, step, (value : unknown) => updateIn(value, tail, updater));
         } catch (e) {
             if (e instanceof TypeError) {
-                // Add path information to exception message
-                // @ts-ignore
-                e.location = path;
-                //throw new TypeError(`${e.message} [at ${path}]`);
+                // Add location information to exception message (if not added already)
+                throw Object.assign(e, {
+                    // @ts-ignore
+                    location: e.location ?? path,
+                });
             }
             throw e;
         }
     } else {
-        throw new TypeError($msg`Cannot update value of unknown state type ${state} [at ${path}]`);
+        throw Object.assign(
+            new TypeError($msg`Cannot update value of unknown state type ${state}`),
+            { location: path },
+        );
     }
 };
 
