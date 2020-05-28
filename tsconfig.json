@@ -10,7 +10,7 @@
         "noEmit": true,
         "noErrorTruncation": true,
         "esModuleInterop": true,
-        "lib": ["es2019"],
+        "lib": ["es2020"],
         "allowJs": false,
         "strict": true,
         "noImplicitThis": true,
