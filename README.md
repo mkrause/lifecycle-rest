@@ -122,10 +122,10 @@ Custom methods can be defined as follows:
 const api = RestApi({ agent }, {
     methods: {
         @RestApi.method()
-        getCustom({ agent, uri }, ...args) {
+        async getCustom({ agent, uri }, ...args) {
             // Here, the first argument is the resource definition, and `args` contains any remaining arguments
             
-            return agent.get(uri);
+            return await agent.get(uri);
         },
     },
 });
