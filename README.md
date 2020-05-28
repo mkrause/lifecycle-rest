@@ -31,8 +31,8 @@ const api = RestApi({ agent }, {
             // Custom methods
             methods: {
                 @RestApi.method()
-                async search({ spec }, query) {
-                    return await agent.get(spec.uri, query);
+                async search({ agent, uri }, query) {
+                    return await agent.get(uri, query);
                 },
             },
             
@@ -122,10 +122,10 @@ Custom methods can be defined as follows:
 const api = RestApi({ agent }, {
     methods: {
         @RestApi.method()
-        getCustom(spec, ...args) {
-            // Here, `spec` is the resource definition, and `args` contains any remaining arguments
+        getCustom({ agent, uri }, ...args) {
+            // Here, the first argument is the resource definition, and `args` contains any remaining arguments
             
-            return agent.get(spec.uri);
+            return agent.get(uri);
         },
     },
 });
@@ -142,8 +142,11 @@ RestApi.Item(schema, resourceSpec)
 
 There are a number of methods implemented on this resource by default:
 
-  * `get(params : Object)`: Perform a GET request, using `params` as the query parameters.
-  * `put(item : Item, params : Object)`: Perform a PUT request, where `item` is the resource to send.
+  * `get(params : object)`: Perform a GET request, using `params` as the query parameters.
+  * `put(item : Item, params : object)`: Perform a PUT request, where `item` is the resource to send.
+  * `patch(item : Item, params : object)`: Perform a PUT request, where `item` is the resource to send.
+  * `delete(item : Item, params : object)`: Perform a DELETE request, where `item` is the resource to delete.
+  * `post(body : unknown, params : object)`: Perform a generic POST request (no decoding performed).
 
 
 ### `RestApi.Collection`
@@ -158,9 +161,11 @@ Configuration:
 
 There are a number of methods implemented on this resource by default:
 
-  * `list(params : Object)`: Perform a GET request, using `params` as the query parameters.
-  * `put(collection : Collection, params : Object)`: Perform a PUT request, where `collection` is the resource to send.
-  * `create(entry : Entry)`. Create a new entry in the collection. Requires the `entry` property to be defined in order to determine the resource type (`Entry`).
+  * `get(params : object)`: Perform a GET request, using `params` as the query parameters.
+  * `list(params : object)`: (Alias for `get`.)
+  * `put(collection : Collection, params : object)`: Perform a PUT request, where `collection` is the resource to send.
+  * `create(entry : Entry, params : object)`. Create a new entry in the collection. Requires the `entry` property to be defined in order to determine the resource type (`Entry`).
+  * `post(body : unknown, params : object)`: Perform a generic POST request (no decoding performed).
 
 
 ## Integration with redux
