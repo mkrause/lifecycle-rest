@@ -27,13 +27,13 @@
         "prepublishOnly": "npm run build:esm && npm run build:cjs && npm run types"
     },
     "devDependencies": {
-        "@babel/core": "^7.9.6",
-        "@babel/register": "^7.9.0",
-        "@babel/cli": "^7.8.4",
-        "@babel/preset-env": "^7.9.6",
-        "@babel/plugin-proposal-class-properties": "^7.8.3",
+        "@babel/core": "^7.10.1",
+        "@babel/register": "^7.10.1",
+        "@babel/cli": "^7.10.1",
+        "@babel/preset-env": "^7.10.1",
+        "@babel/plugin-proposal-class-properties": "^7.10.1",
         "babel-plugin-transform-builtin-extend": "^1.1.2",
-        "@babel/preset-typescript": "^7.9.0",
+        "@babel/preset-typescript": "^7.10.1",
         "typescript": "^3.9.3",
         "@types/node": "^14.0.5",
         "@types/uuid": "^8.0.0",
@@ -44,7 +44,8 @@
         "chai-match-pattern": "^1.1.0",
         "sinon": "^9.0.2",
         "redux": "^4.0.5",
-        "http-status-codes": "^1.4.0"
+        "http-status-codes": "^1.4.0",
+        "immutable": "^4.0.0-rc.12"
     },
     "peerDependencies": {
         "redux": "^4.0.0"
@@ -55,11 +56,10 @@
         "uuid": "^8.1.0",
         "uri-tag": "^1.2.0",
         "message-tag": "^0.5.1",
-        "object-merge-advanced": "^10.11.21",
+        "object-merge-advanced": "^10.11.22",
         "axios": "^0.19.2",
-        "fp-ts": "^2.6.1",
-        "io-ts": "^2.2.3",
-        "@mkrause/lifecycle-loader": "^0.2.3",
-        "immutable": "^4.0.0-rc.12"
+        "fp-ts": "^2.6.2",
+        "io-ts": "^2.2.4",
+        "@mkrause/lifecycle-loader": "^0.2.3"
     }
 }

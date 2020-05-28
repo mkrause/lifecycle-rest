@@ -6,7 +6,7 @@ Create a REST API client through a declarative API definition. Integrates with s
 Example:
 
 ```js
-import RestApi, { createAgent } from '@mkrause/lifecycle-rest';
+import { RestApi, createAgent } from '@mkrause/lifecycle-rest';
 
 const agent = createAgent({
     baseURL: 'https://example.com/api',
@@ -24,8 +24,9 @@ const api = RestApi(agent, {
             
             // Custom methods
             methods: {
-                search: ({ spec }, query) => {
-                    return agent.get(spec.uri, query);
+                @RestApi.method()
+                async search: ({ spec }, query) => {
+                    return await agent.get(spec.uri, query);
                 },
             },
         }),
@@ -112,6 +113,7 @@ Custom methods can be defined as follows:
 ```js
 const api = RestApi(agent, {
     methods: {
+        @RestApi.method()
         getCustom: (spec, ...args) => {
             // Here, `spec` is the resource definition, and `args` contains any remaining arguments
             
@@ -138,11 +140,10 @@ There are a number of methods implemented on this resource by default:
 Schema:
 
 ```js
-type Item = mixed;
+type Item = unknown;
 type ItemSchema = {
-    instantiate : () => Item,
-    decode : (instanceEncoded : mixed) => Item;
-    encode : (instance : Item) => mixed;
+    decode : (instanceEncoded : unknown) => Item;
+    encode : (instance : Item) => unknown;
 };
 ```
 
@@ -167,11 +168,10 @@ There are a number of methods implemented on this resource by default:
 Schema:
 
 ```js
-type Collection = mixed;
+type Collection = unknown;
 type CollectionSchema = {
-    instantiate : () => Collection,
-    decode : (instanceEncoded : mixed) => Collection;
-    encode : (instance : Collection) => mixed;
+    decode : (instanceEncoded : unknown) => Collection;
+    encode : (instance : Collection) => unknown;
 };
 ```
 
