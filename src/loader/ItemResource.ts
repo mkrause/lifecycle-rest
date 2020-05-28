@@ -59,7 +59,7 @@ const defaultMethods = {
         : Promise<t.TypeOf<S>> {
             const { agent, schema, adapter, ...spec } = this[resourceDef];
             
-            const schemaPartial = adapter.partial(schema);
+            const schemaPartial = adapter.partial();
             
             const instanceEncoded = schemaPartial.encode(instance);
             

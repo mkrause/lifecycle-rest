@@ -140,7 +140,19 @@ export default (configPartial : Partial<Config> = {}) => {
         
         const requestId = uuid();
         
-        if (Location.isLocation(storableSpec.location)) {
+        if (typeof storableSpec.location === 'function') {
+            const location = storableSpec.location(undefined).map(
+                step => typeof step === 'undefined' ? { index: '<unknown>' } : step
+            );
+            const actionType = locationToReduxActionType(config.prefix, location);
+            
+            store.dispatch({
+                type: `${actionType}:loading`,
+                state: 'loading',
+                requestId,
+                path: location,
+            });
+        } else {
             // If the location is known synchronously, dispatch a loading action
             
             const actionType = locationToReduxActionType(config.prefix, storableSpec.location);
@@ -162,80 +174,97 @@ export default (configPartial : Partial<Config> = {}) => {
             });
         }
         
-        Promise.resolve(storableSpec.location)
+        storablePromise
             .then(
-                (location : Location.Location) => {
+                (result : R) => {
+                    const location = typeof storableSpec.location === 'function'
+                        ? storableSpec.location(result)
+                        : storableSpec.location;
+                    
                     const actionType = locationToReduxActionType(config.prefix, location);
                     
-                    storablePromise
-                        .then(
-                            result => {
-                                store.dispatch({
-                                    [lifecycleActionKey]: null,
-                                    type: `${actionType}:ready`,
-                                    state: 'ready',
-                                    path: location,
-                                    requestId,
-                                    
-                                    item: storableSpec.accessor(result),
-                                    update: <T>(itemCurrent : T) => {
-                                        const itemUpdated = storableSpec.accessor(result);
-                                        
-                                        return updateItem(
-                                            itemCurrent,
-                                            { ready: true, loading: false, error: null },
-                                            itemUpdated,
-                                        );
-                                        
-                                        /*
-                                        // FIXME
-                                        if (typeof item === 'undefined') {
-                                            const itemUpdated = storableSpec.accessor(result) as T;
-                                            return Loadable.asReady(Loadable.Record<T>(), itemUpdated);
-                                        }
-                                        
-                                        if (typeof item !== 'object' || item === null || !(status in item)) {
-                                            throw new TypeError($msg`Expected loadable item, given ${item}`);
-                                        }
-                                        const itemUpdated = storableSpec.accessor(result) as T;
-                                        return Loadable.asReady(item, itemUpdated);
-                                        */
-                                    },
-                                });
-                            },
-                            (reason : Error) => {
-                                store.dispatch({
-                                    [lifecycleActionKey]: null,
-                                    type: `${actionType}:failed`,
-                                    state: 'failed',
-                                    path: location,
-                                    requestId,
-                                    
-                                    reason,
-                                    update: <T>(itemCurrent : T) => {
-                                        return updateItem(
-                                            itemCurrent,
-                                            { ready: false, loading: false, error: reason },
-                                        );
-                                        
-                                        /*
-                                        // FIXME
-                                        if (typeof item === 'undefined') {
-                                            return Loadable.asFailed(Loadable.Record<T>(), reason);
-                                        }
-                                        
-                                        if (typeof item !== 'object' || item === null || !(status in item)) {
-                                            throw new TypeError($msg`Expected loadable item, given ${item}`);
-                                        }
-                                        Loadable.asFailed(item, reason);
-                                        */
-                                    },
-                                });
-                            },
-                        );
+                    store.dispatch({
+                        [lifecycleActionKey]: null,
+                        type: `${actionType}:ready`,
+                        state: 'ready',
+                        path: location,
+                        requestId,
+                        
+                        item: storableSpec.accessor(result),
+                        update: <T>(itemCurrent : T) => {
+                            const itemUpdated = storableSpec.accessor(result);
+                            
+                            return updateItem(
+                                itemCurrent,
+                                { ready: true, loading: false, error: null },
+                                itemUpdated,
+                            );
+                            
+                            /*
+                            // FIXME
+                            if (typeof item === 'undefined') {
+                                const itemUpdated = storableSpec.accessor(result) as T;
+                                return Loadable.asReady(Loadable.Record<T>(), itemUpdated);
+                            }
+                            
+                            if (typeof item !== 'object' || item === null || !(status in item)) {
+                                throw new TypeError($msg`Expected loadable item, given ${item}`);
+                            }
+                            const itemUpdated = storableSpec.accessor(result) as T;
+                            return Loadable.asReady(item, itemUpdated);
+                            */
+                        },
+                    });
                 },
                 (reason : Error) => {
-                    throw new Error($msg`Unable to retrieve store location: ${reason}`);
+                    if (typeof storableSpec.location === 'function') {
+                        const location = storableSpec.location(undefined).map(
+                            step => typeof step === 'undefined' ? { index: '<unknown>' } : step
+                        );
+                        const actionType = locationToReduxActionType(config.prefix, location);
+                        
+                        store.dispatch({
+                            [lifecycleActionKey]: null,
+                            type: `${actionType}:failed`,
+                            state: 'failed',
+                            path: location,
+                            requestId,
+                            
+                            reason,
+                        });
+                        return;
+                    }
+                    
+                    const location = storableSpec.location;
+                    const actionType = locationToReduxActionType(config.prefix, location);
+                    
+                    store.dispatch({
+                        [lifecycleActionKey]: null,
+                        type: `${actionType}:failed`,
+                        state: 'failed',
+                        path: location,
+                        requestId,
+                        
+                        reason,
+                        update: <T>(itemCurrent : T) => {
+                            return updateItem(
+                                itemCurrent,
+                                { ready: false, loading: false, error: reason },
+                            );
+                            
+                            /*
+                            // FIXME
+                            if (typeof item === 'undefined') {
+                                return Loadable.asFailed(Loadable.Record<T>(), reason);
+                            }
+                            
+                            if (typeof item !== 'object' || item === null || !(status in item)) {
+                                throw new TypeError($msg`Expected loadable item, given ${item}`);
+                            }
+                            Loadable.asFailed(item, reason);
+                            */
+                        },
+                    });
                 },
             );
         

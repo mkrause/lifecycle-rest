@@ -18,8 +18,8 @@ export const storableKey = Symbol('storable');
 export type StorableSpec<R, T = unknown> = {
     // The location where this item is to be stored. Each "step" is either a string (object key), or could be
     // anything else (e.g. index into a hash map) as long as we can convert it to a string.
-    // Can be a promise, if the location is not known ahead of time (e.g. it depends on a dynamically created ID).
-    location : Location.Location | Promise<Location.Location>,
+    // Can be a function, if the location is not known ahead of time (e.g. it depends on a dynamically created ID).
+    location : Location.Location | ((result : undefined | R) => Location.Location),
     
     // XXX alternatively, we could enforce `location` to always be known (no promise) up until the last step, and
     // then have a separate `getKey` function that should give the last step for a resolved promise.

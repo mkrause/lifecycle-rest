@@ -24,6 +24,7 @@ export type CollSchema = Schema;
 
 export type CollResourceSpec<S extends CollSchema> = ResourceSpec<S>
     & {
+        getKey : (value : t.TypeOf<S>) => unknown,
         entry : ResourceCreator<Schema>,
     };
 
@@ -63,7 +64,7 @@ const defaultMethods = {
         : Promise<t.TypeOf<S>> {
             const { agent, schema, adapter, ...spec } = this[resourceDef];
             
-            const schemaPartial = adapter.partial(schema);
+            const schemaPartial = adapter.partial();
             
             const instanceEncoded = schema.encode(instance);
             
@@ -132,17 +133,37 @@ const collectionDefaults = {
         
         create<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
             : StorablePromise<t.TypeOf<S>> {
-                // TODO: the store `location` here is wrong, need to add the `index`. Also need to support the
-                // possibility of the `index` only being available in the response (so `location` as Promise).
-                // In order to do so, we also need a way to ask the consumer to extract the index from the response.
+                const { schema, adapter, store } = this[resourceDef];
                 
                 return makeStorable(Function.prototype.call.call(defaultMethods.create, this, instance, params), {
-                    location: this[resourceDef].store,
+                    location: (result : unknown) => {
+                        if (typeof result === 'undefined') {
+                            return [...store, undefined];
+                        }
+                        
+                        try {
+                            // const schemaKey = adapter.keyOf(schema);
+                            // const index = adapter.with(schemaKey).decode(result);
+                            
+                            // @ts-ignore
+                            const index = this[resourceDef].getKey(result);
+                            
+                            if (typeof index === 'undefined') {
+                                throw new TypeError(`Key does not exist on ${result}`);
+                            }
+                            
+                            return [...store, index];
+                        } catch (e) {
+                            throw new TypeError($msg`Cannot get key of result: ${result}, reason: ${e}`);
+                        }
+                    },
                     operation: 'put',
                 });
             },
     },
     resources: {},
+    
+    getKey: () => { throw new TypeError(`Unknown key type`); },
     entry: (index : Location.Index) => { throw new TypeError($msg`Cannot construct entry`); },
 };
 
@@ -210,6 +231,9 @@ export const CollectionResource = <S extends CollSchema, Spec extends Partial<Co
                 adapter: null as unknown as AdapterT,
             };
             resourceDefinition.adapter = context.options.adapter(resourceDefinition, schema);
+            
+            // @ts-ignore
+            resourceDefinition.getKey = spec.getKey;
             
             const resource : CollResource = Object.assign(makeEntry,
                 methods,

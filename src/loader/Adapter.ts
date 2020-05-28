@@ -1,4 +1,6 @@
 
+import $msg from 'message-tag';
+
 import { Schema, DecodeError } from '../schema/Schema.js';
 
 import type { Resource } from './Resource.js';
@@ -7,11 +9,12 @@ import { ResourceDefinition } from './Resource.js';
 import { AxiosResponse } from 'axios';
 
 import * as t from 'io-ts';
+import { isLeft } from 'fp-ts/lib/Either';
 import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
-const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema : S) => ({
+const makeAdapter = <S extends Schema<unknown>>(resource : ResourceDefinition<S>, schema : S) => ({
     with(schema : Schema) {
         return makeAdapter(resource, schema);
     },
@@ -50,13 +53,45 @@ const makeAdapter = <S extends Schema>(resource : ResourceDefinition<S>, schema 
     
     format(item : unknown) { return item },
     
-    partial(schema : t.Type<unknown, unknown, unknown>) {
+    partial() {
         if ('props' in schema) {
             return t.partial((schema as any).props);
         } else {
             return schema;
         }
     },
+    
+    getKey(instance : t.TypeOf<Schema>) {
+        if (typeof instance === 'object' && instance !== null && 'id' in instance) {
+            return (instance as { id : unknown }).id;
+        }
+        
+        throw new TypeError($msg`Unable to get key for ${instance}`);
+    },
+    
+    /* TODO
+    keyOf() {
+        // If the schema is `any`, try to find a default `id` property?
+        if (schema.name === 'Unknown') { // TEMP
+            const IdType = t.type({ id: t.any });
+            return new Type(
+                'keyof ' + IdType.name,
+                IdType.is,
+                (input : t.InputOf<typeof IdType>, context : t.Context) => {
+                  const e = IdType.validate(input, context);
+                  if (isLeft(e)) {
+                    return e;
+                  }
+                  
+                  return e.right.id;
+                },
+                (instance : unknown) => instance,
+            );
+        }
+        
+        return schema
+    },
+    */
 });
 
 // Get the return type of `Adapter`

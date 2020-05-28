@@ -20,7 +20,7 @@ describe('redux middleware', () => {
         prefix: 'test',
     });
     
-    it('should produce ready action given a promise that resolves and a location promise', async () => {
+    it('should produce ready action given a promise that resolves and a location function', async () => {
         const reduceMock = sinon.stub()
             .callsFake((state, action) => state);
         
@@ -36,19 +36,25 @@ describe('redux middleware', () => {
         reduceMock.resetHistory();
         
         const storablePromise = makeStorable(Promise.resolve(42), {
-            location: Promise.resolve(['x', 'y', 'z']),
+            location: result => ['x', 'y', 'z', result],
             operation: 'put',
         });
         
         const dispatchPromise = store.dispatch(storablePromise);
         await expect(dispatchPromise).to.eventually.equal(42);
         
-        sinon.assert.calledOnce(reduceMock);
+        sinon.assert.calledTwice(reduceMock);
         sinon.assert.calledWith(reduceMock.firstCall, sinon.match.any, sinon.match({
-            [lifecycleActionKey]: null,
-            type: 'test:x.y.z:ready',
+            type: 'test:x.y.z.<unknown>:loading',
             requestId: sinon.match.string,
-            path: ['x', 'y', 'z'],
+            path: ['x', 'y', 'z', { index: '<unknown>' }],
+            state: 'loading',
+        }));
+        sinon.assert.calledWith(reduceMock.secondCall, sinon.match.any, sinon.match({
+            [lifecycleActionKey]: null,
+            type: 'test:x.y.z.42:ready',
+            requestId: sinon.match.string,
+            path: ['x', 'y', 'z', 42],
             state: 'ready',
             update: sinon.match.func,
         }));
