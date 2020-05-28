@@ -19,8 +19,9 @@
     "main": "./lib-cjs/index.js",
     "module": "./lib-esm/index.js",
     "scripts": {
-        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs babel src --out-dir lib-cjs --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
-        "build:esm": "NODE_ENV=production BABEL_ENV=esm babel src --out-dir lib-esm --delete-dir-on-start --extensions '.js,.ts' --source-maps=true",
+        "_build": "babel src --extensions '.js,.ts' --source-maps=true",
+        "build:cjs": "NODE_ENV=production BABEL_ENV=cjs npm run _build -- --out-dir lib-cjs --delete-dir-on-start",
+        "build:esm": "NODE_ENV=production BABEL_ENV=esm npm run _build -- --out-dir lib-esm --delete-dir-on-start",
         "types": "tsc --project ./tsconfig.decl.json",
         "test:unit": "npm run build:esm && NODE_ENV=development BABEL_ENV=cjs mocha --require=@babel/register --recursive tests/unit",
         "test": "npm run test:unit && tsc && echo '[tsc] success'",
@@ -51,15 +52,15 @@
         "redux": "^4.0.0"
     },
     "dependencies": {
-        "ts-toolbelt": "6.9.0",
+        "ts-toolbelt": "6.9.4",
         "case-match": "^2.0.1",
         "uuid": "^8.1.0",
         "uri-tag": "^1.2.0",
         "message-tag": "^0.5.1",
         "object-merge-advanced": "^10.11.22",
+        "@mkrause/lifecycle-loader": "^0.2.3",
         "axios": "^0.19.2",
         "fp-ts": "^2.6.2",
-        "io-ts": "^2.2.4",
-        "@mkrause/lifecycle-loader": "^0.2.3"
+        "io-ts": "^2.2.4"
     }
 }
