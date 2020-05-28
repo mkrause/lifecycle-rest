@@ -1,34 +1,42 @@
 
 # lifecycle-rest
 
-Create a REST API client through a declarative API definition. Integrates with state management libraries, like [redux](https://redux.js.org).
+[![npm](https://img.shields.io/npm/v/@mkrause/lifecycle-rest.svg?style=flat-square)](https://www.npmjs.com/package/@mkrause/lifecycle-rest)
+[![Travis](https://img.shields.io/travis/mkrause/lifecycle-rest.svg?style=flat-square)](https://travis-ci.org/mkrause/lifecycle-rest)
+![MIT](https://img.shields.io/npm/l/@mkrause/lifecycle-rest?style=flat-square)
+![TypeScript](https://img.shields.io/badge/-TypeScript-blue.svg?style=flat-square)
+
+Create a REST API client through a declarative API definition, based on [io-ts](https://github.com/gcanti/io-ts) type definitions. Integrates with state management libraries, like [redux](https://redux.js.org).
 
 Example:
 
 ```js
 import { RestApi, createAgent } from '@mkrause/lifecycle-rest';
+import * as t from 'io-ts';
 
+// Define your data types
+const User = t.type({ name: t.string });
+const UsersCollection = t.array(User);
+
+// Create an HTTP agent (axios)
 const agent = createAgent({
     baseURL: 'https://example.com/api',
 });
 
-class User { /* ... */ }
-class UsersCollection { /* ... */ }
-
-const api = RestApi(agent, {
+const api = RestApi({ agent }, {
     resources: {
         users: RestApi.Collection(UsersCollection, {
             uri: 'users',
             
-            entry: RestApi.Item(User),
-            
             // Custom methods
             methods: {
                 @RestApi.method()
-                async search: ({ spec }, query) => {
+                async search({ spec }, query) {
                     return await agent.get(spec.uri, query);
                 },
             },
+            
+            entry: RestApi.Item(User),
         }),
     },
 });
@@ -51,7 +59,7 @@ This library exports a `RestApi` function, which you can use to define your API.
 ```js
 import RestApi from '@mkrause/lifecycle-rest';
 
-const api = RestApi(<agent>, <api-definition>);
+const api = RestApi({ agent: <agent> }, <api-definition>);
 ```
 
 The agent should be an instance of the [axios](https://github.com/axios/axios) library. We provide a `createAgent` helper that you can use that comes with a few useful defaults.
@@ -67,9 +75,9 @@ const agent = createAgent({
 The API definition consists of a tree of *resource definitions*. A resource definition describes some [REST resource](https://stackoverflow.com/questions/10799198/what-are-rest-resources) in your API. For example, you might have an endpoint `hello` that takes a name and returns a greeting. You could define that resource as follows:
 
 ```js
-const greetingApi = RestApi(agent, {
+const greetingApi = RestApi({ agent }, RestApi.Item(t.unknown, {
     uri: 'hello',
-});
+}));
 
 // GET https://example.com/api/hello?name=Bob
 const greeting = await greetingApi.get({ name: 'Bob' }); // Returns "Hello Bob!"
@@ -78,9 +86,9 @@ const greeting = await greetingApi.get({ name: 'Bob' }); // Returns "Hello Bob!"
 Each resource may have *subresources*. Subresources are accessed as properties on the resulting API client:
 
 ```js
-const api = RestApi(agent, {
+const api = RestApi({ agent }, {
     resources: {
-        users: RestApi.Collection(),
+        users: RestApi.Collection(UsersCollection),
     },
 });
 
@@ -111,10 +119,10 @@ Configuration:
 Custom methods can be defined as follows:
 
 ```js
-const api = RestApi(agent, {
+const api = RestApi({ agent }, {
     methods: {
         @RestApi.method()
-        getCustom: (spec, ...args) => {
+        getCustom(spec, ...args) {
             // Here, `spec` is the resource definition, and `args` contains any remaining arguments
             
             return agent.get(spec.uri);
@@ -137,16 +145,6 @@ There are a number of methods implemented on this resource by default:
   * `get(params : Object)`: Perform a GET request, using `params` as the query parameters.
   * `put(item : Item, params : Object)`: Perform a PUT request, where `item` is the resource to send.
 
-Schema:
-
-```js
-type Item = unknown;
-type ItemSchema = {
-    decode : (instanceEncoded : unknown) => Item;
-    encode : (instance : Item) => unknown;
-};
-```
-
 
 ### `RestApi.Collection`
 
@@ -163,17 +161,6 @@ There are a number of methods implemented on this resource by default:
   * `list(params : Object)`: Perform a GET request, using `params` as the query parameters.
   * `put(collection : Collection, params : Object)`: Perform a PUT request, where `collection` is the resource to send.
   * `create(entry : Entry)`. Create a new entry in the collection. Requires the `entry` property to be defined in order to determine the resource type (`Entry`).
-
-
-Schema:
-
-```js
-type Collection = unknown;
-type CollectionSchema = {
-    decode : (instanceEncoded : unknown) => Collection;
-    encode : (instance : Collection) => unknown;
-};
-```
 
 
 ## Integration with redux
