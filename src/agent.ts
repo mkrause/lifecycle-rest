@@ -23,4 +23,4 @@ const optionsDefaults : AxiosRequestConfig = {
 };
 
 export default (options : AxiosRequestConfig = {}) : AxiosInstance =>
-    axios.create(merge(optionsDefaults, options));
+    axios.create(merge(optionsDefaults, options) as AxiosRequestConfig);

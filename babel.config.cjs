@@ -40,5 +40,4 @@ module.exports = {
             globals: ['Error', 'String', 'Number', 'Array', 'Promise'],
         }],
     ],
-    sourceMaps: 'inline',
 };
