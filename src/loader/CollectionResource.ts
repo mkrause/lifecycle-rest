@@ -85,7 +85,7 @@ const defaultMethods = {
     async post<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
         : Promise<AxiosResponse> {
             const { agent, schema, adapter, ...spec } = this[resourceDef];
-            const response = await agent.head(spec.uri, { params });
+            const response = await agent.post(spec.uri, { params });
             return response;
         },
     
