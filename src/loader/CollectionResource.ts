@@ -91,9 +91,11 @@ const defaultMethods = {
     
     async create<S extends CollSchema>(this : CollResourceT<S>, instance : unknown, params = {})
         : Promise<t.TypeOf<S>> {
-            const { agent, schema, adapter, ...spec } = this[resourceDef];
+            const { agent, schema, adapter, entry, ...spec } = this[resourceDef];
             
-            const entrySchema = this.entrySchema;
+            //const entrySchema = this.entrySchema; // FIXME
+            const entrySchema = entry.schema;
+            
             const entryAdapter = adapter.with(entrySchema);
             
             const instanceEncoded = entryAdapter.encode(instance);
