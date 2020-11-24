@@ -28,7 +28,11 @@ type ReducerConfig = {
 
 type Updater = <T>(item : Loadable<T>) => Loadable<T>;
 
-const updatePlainObject = (state : object, step : Location.Step, updateChild : (value : unknown) => unknown) => {
+
+// `updatePlainObjectAsRecord` treats objects as closed records, `updatePlainObject` below allows objects to be
+// treated as dictionaries as well. Swap out either based on what we want to allow.
+/*
+const updatePlainObjectAsRecord = (state : object, step : Location.Step, updateChild : (value : unknown) => unknown) => {
     // Step must be a string (or number), because we're using it to index into a plain JS object
     if (typeof step !== 'string' && typeof step !== 'number') {
         throw new TypeError($msg`Invalid step ${step} into plain object, need a string or number`);
@@ -42,6 +46,20 @@ const updatePlainObject = (state : object, step : Location.Step, updateChild : (
     }
     
     return { ...state, [propKey]: updateChild(state[propKey]) };
+};
+*/
+const updatePlainObject = (state : object, step : Location.Step, updateChild : (value : unknown) => unknown) => {
+    // Step must be a string (or number), because we're using it to index into a plain JS object
+    if (typeof step !== 'string' && typeof step !== 'number') {
+        throw new TypeError($msg`Invalid step ${step} into plain object, need a string or number`);
+    }
+    
+    const propKey : PropertyKey = step;
+    
+    const propUpdated = ObjectUtil.hasOwnProp(state, propKey)
+        ? updateChild(state[propKey])
+        : updateChild(undefined);
+    return { ...state, [propKey]: propUpdated };
 };
 
 const updateArray = (state : Array<unknown>, step : Location.Step, updateChild : (value : unknown) => unknown) => {

@@ -53,7 +53,11 @@ const lifecycleAction = action => ({
     
     // TEMP: convenience: if given `item`, turn it into an `update` function automatically
     update: action.update ? action.update : item => {
-        return Loadable.asReady(item, action.item);
+        if (typeof item === 'undefined') {
+            return Loadable.asReady(Loadable(), action.item);
+        } else {
+            return Loadable.asReady(item, action.item);
+        }
     },
 });
 
@@ -118,6 +122,7 @@ describe('redux reducer', () => {
         });
         
         describe('on plain object', () => {
+            /*
             it('should fail to update nonexistent property', () => {
                 const action = lifecycleAction({
                     path: ['app', 'nonexistent'],
@@ -127,9 +132,8 @@ describe('redux reducer', () => {
                 
                 expect(() => reduce(state1, action)).to.throw(TypeError);
             });
-            
-            /*
-            it('should create the intermediate step on single nonexistent step', () => {
+            */
+            it('should allow creating a new property if it is the last in the path', () => {
                 const action = lifecycleAction({
                     path: ['app', 'users', 'nonexistent'],
                     state: 'ready',
@@ -146,7 +150,6 @@ describe('redux reducer', () => {
                     },
                 });
             });
-            */
             
             it('should update value given a valid path', () => {
                 const action = lifecycleAction({
