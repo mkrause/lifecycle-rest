@@ -102,7 +102,7 @@ const defaultMethods = {
             
             const response = await agent.post(spec.uri, instanceEncoded, { params });
             const entryResult : t.TypeOf<typeof entrySchema> = entryAdapter.report(
-                schema.decode(entryAdapter.parse(response))
+                entrySchema.decode(entryAdapter.parse(response))
             );
             
             return entryResult;
