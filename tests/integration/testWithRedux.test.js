@@ -13,7 +13,7 @@ import { status, Loadable } from '@mkrause/lifecycle-loader';
 
 import createAgent from '../../lib-esm/agent.js';
 import { Unknown } from '../../lib-esm/schema/Schema.js';
-import agentMock from '../resources/agent_mock.js';
+import agentMock, { users as usersMock } from '../resources/agent_mock.js';
 
 import { DecodeError } from '../../lib-esm/schema/Schema.js';
 import { resourceDef } from '../../lib-esm/loader/Resource.js';
@@ -34,7 +34,7 @@ describe('integration - REST API with redux store', () => {
         score: t.number,
     });
     
-    const api = RestApi({ agentMock }, RestApi.Item(Unknown, {
+    const api = RestApi({ agent: agentMock }, RestApi.Item(Unknown, {
         uri: '/api',
         resources: {
             users: RestApi.Collection(t.record(t.string, User), {
@@ -52,39 +52,19 @@ describe('integration - REST API with redux store', () => {
         users: Loadable({}),
     };
     
-    const store = Redux.createStore(
-        createLifecycleReducer(),
-        initialState,
-        Redux.applyMiddleware(lifecycleMiddleware)
-    );
-    
     it('should support fetching a collection', async () => {
-        //await store.dispatch(api.users.list());
+        const store = Redux.createStore(
+            createLifecycleReducer(),
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware),
+        );
         
-        // TODO: need CollectionResource to return a StorablePromise
-        const action = makeStorable(api.users.list(), {
-            location: ['users'],
-            //getKey: () => null | string,
-            accessor: x => x,
-            operation: 'put',
-        });
+        const result = await store.dispatch(api.users.list());
         
-        const result = await store.dispatch(action);
-        
-        expect(result).to.deep.equal({
-            alice: { name: 'Alice', score: 101 },
-            bob: { name: 'Bob', score: 7 },
-            john: { name: 'John', score: 42 },
-        });
+        expect(result).to.deep.equal(usersMock);
         
         expect(store.getState()).to.deep.equal({
-            //users: new Map(Object.entries({
-            users: {
-                alice: { name: 'Alice', score: 101 },
-                bob: { name: 'Bob', score: 7 },
-                john: { name: 'John', score: 42 },
-            },
-            //})),
+            users: usersMock,
         });
     });
 });
