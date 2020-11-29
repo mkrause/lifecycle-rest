@@ -80,6 +80,12 @@ describe('integration - REST API with redux store', () => {
                 john: usersMock.john,
             },
         });
+        
+        expect(store.getState().users).to.have.property(status).to.deep.equal({
+            ready: true,
+            loading: false,
+            error: null,
+        });
     });
     
     it('should support indexing into a collection', async () => {
@@ -97,6 +103,17 @@ describe('integration - REST API with redux store', () => {
             users: {
                 alice: usersMock.alice,
             },
+        });
+        
+        expect(store.getState().users).to.have.property(status).to.deep.equal({
+            ready: false, // Invalidated
+            loading: false,
+            error: null,
+        });
+        expect(store.getState().users['alice']).to.have.property(status).to.deep.equal({
+            ready: true,
+            loading: false,
+            error: null,
         });
     });
 });

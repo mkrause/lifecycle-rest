@@ -71,7 +71,7 @@ const dispatchLoading = <T>(
 */
 
 
-// Consolidate a current item (possibly `Loadable`) with an updated item (possible `Loadable`)
+// Consolidate a current item (possibly `Loadable`) with an updated item (possibly `Loadable`)
 const updateItem = <T, U>(itemCurrent : T, status : Status, itemUpdated ?: undefined | U) => {
     if (status.loading === true) {
         if (isLoadable(itemUpdated)) {
@@ -194,11 +194,17 @@ export default (configPartial : Partial<Config> = {}) => {
                         update: <T>(itemCurrent : T) => {
                             const itemUpdated = storableSpec.accessor(result);
                             
-                            return updateItem(
+                            const item = updateItem(
                                 itemCurrent,
                                 { ready: true, loading: false, error: null },
                                 itemUpdated,
                             );
+                            
+                            if (Loadable.isLoadable(item)) {
+                                return Loadable.asReady(item);
+                            } else {
+                                return item;
+                            }
                             
                             /*
                             // FIXME

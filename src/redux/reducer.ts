@@ -165,6 +165,19 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
         );
     }
     
+    // Handle items that are Loadable (i.e. have a status associated)
+    if (Loadable.isLoadable(state)) {
+        // @ts-ignore
+        const stateUpdated = updateIn(state[Loadable.item], path, updater);
+        
+        // TODO: what do we do with the status? May need to be updated/invalidated
+        return Loadable.update(state, stateUpdated, {
+            ready: false,
+            loading: false,
+            error: null,
+        });
+    }
+    
     // Immutable support
     /*
     if (supportsSetIn(state)) {
