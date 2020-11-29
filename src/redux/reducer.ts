@@ -50,11 +50,16 @@ const updatePlainObjectAsRecord = (state : object, step : Location.Step, updateC
 */
 const updatePlainObject = (state : object, step : Location.Step, updateChild : (value : unknown) => unknown) => {
     // Step must be a string (or number), because we're using it to index into a plain JS object
-    if (typeof step !== 'string' && typeof step !== 'number') {
-        throw new TypeError($msg`Invalid step ${step} into plain object, need a string or number`);
+    if (!Location.isStep(step)) {
+        throw new TypeError($msg`Invalid step ${step}`);
     }
     
-    const propKey : PropertyKey = step;
+    let propKey : PropertyKey;
+    if (Location.isIndexStep(step)) {
+        propKey = step.index;
+    } else {
+        propKey = step;
+    }
     
     const propUpdated = ObjectUtil.hasOwnProp(state, propKey)
         ? updateChild(state[propKey])

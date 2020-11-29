@@ -34,11 +34,21 @@ describe('integration - REST API with redux store', () => {
         score: t.number,
     });
     
-    const api = RestApi({ agent: agentMock }, RestApi.Item(Unknown, {
+    const Post = t.type({
+        title: t.string,
+    });
+    
+    const api = RestApi({ agent: agentMock }, RestApi.Item(t.unknown, {
         uri: '/api',
         resources: {
             users: RestApi.Collection(t.record(t.string, User), {
-                entry: RestApi.Item(User),
+                entry: RestApi.Item(User, {
+                    resources: {
+                        posts: RestApi.Collection(t.record(t.string, Post), {
+                            entry: RestApi.Item(Post),
+                        }),
+                    },
+                }),
             }),
         },
     }));
@@ -64,7 +74,29 @@ describe('integration - REST API with redux store', () => {
         expect(result).to.deep.equal(usersMock);
         
         expect(store.getState()).to.deep.equal({
-            users: usersMock,
+            users: {
+                alice: usersMock.alice,
+                bob: usersMock.bob,
+                john: usersMock.john,
+            },
+        });
+    });
+    
+    it('should support indexing into a collection', async () => {
+        const store = Redux.createStore(
+            createLifecycleReducer(),
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware),
+        );
+        
+        const result = await store.dispatch(api.users('alice').get());
+        
+        expect(result).to.deep.equal(usersMock.alice);
+        
+        expect(store.getState()).to.deep.equal({
+            users: {
+                alice: usersMock.alice,
+            },
         });
     });
 });

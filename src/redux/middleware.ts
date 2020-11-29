@@ -115,7 +115,7 @@ const updateItem = <T, U>(itemCurrent : T, status : Status, itemUpdated ?: undef
 };
 
 
-const placeholderLoading = Loadable.asLoading(Loadable.Record());
+const placeholderLoading = Loadable.asLoading(Loadable<never>());
 
 export default (configPartial : Partial<Config> = {}) => {
     const config = merge(configDefault, configPartial) as Config;
@@ -204,7 +204,7 @@ export default (configPartial : Partial<Config> = {}) => {
                             // FIXME
                             if (typeof item === 'undefined') {
                                 const itemUpdated = storableSpec.accessor(result) as T;
-                                return Loadable.asReady(Loadable.Record<T>(), itemUpdated);
+                                return Loadable.asReady(Loadable<T>(), itemUpdated);
                             }
                             
                             if (typeof item !== 'object' || item === null || !(status in item)) {
@@ -255,7 +255,7 @@ export default (configPartial : Partial<Config> = {}) => {
                             /*
                             // FIXME
                             if (typeof item === 'undefined') {
-                                return Loadable.asFailed(Loadable.Record<T>(), reason);
+                                return Loadable.asFailed(Loadable<T>(), reason);
                             }
                             
                             if (typeof item !== 'object' || item === null || !(status in item)) {
