@@ -116,4 +116,33 @@ describe('integration - REST API with redux store', () => {
             error: null,
         });
     });
+    
+    it('should support deleting an entry', async () => {
+        const store = Redux.createStore(
+            createLifecycleReducer(),
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware),
+        );
+        
+        await store.dispatch(api.users.list());
+        
+        const result = await store.dispatch(api.users('bob').delete());
+        
+        expect(result).to.deep.equal({
+            response: undefined,
+        });
+        
+        expect(store.getState().users).to.have.property(status).to.deep.equal({
+            ready: false, // Invalidated (TODO: does this make sense?)
+            loading: false,
+            error: null,
+        });
+        expect(store.getState()).to.deep.equal({
+            users: {
+                alice: usersMock.alice,
+                //bob: usersMock.bob, // Deleted
+                john: usersMock.john,
+            },
+        });
+    });
 });

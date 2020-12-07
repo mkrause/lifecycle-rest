@@ -34,7 +34,7 @@ export type LifecycleAction<S extends StatusType> = ReduxAnyAction & {
     reason : S extends 'failed' ? Error : undefined,
     
     // update : <T>(item : Loadable<T>) => Loadable<T>,
-    update : <T>(item : T) => T,
+    update : <T>(item : T) => undefined | T, // `undefined` if we want to clear the item
     // update : (item : unknown) => unknown,
 };
 export const isLifecycleAction = <S extends StatusType>(action : ReduxAnyAction) : action is LifecycleAction<S> => {
@@ -146,7 +146,10 @@ export default (configPartial : Partial<Config> = {}) => {
             );
             const actionType = locationToReduxActionType(config.prefix, location);
             
+            // Dispatch an informative action to indicate loading at yet-unknown location. Will not be picked
+            // up by reducer because it doesn't have `lifecycleActionKey`.
             store.dispatch({
+                //[lifecycleActionKey]: null,
                 type: `${actionType}:loading`,
                 state: 'loading',
                 requestId,
@@ -192,6 +195,11 @@ export default (configPartial : Partial<Config> = {}) => {
                         
                         item: storableSpec.accessor(result),
                         update: <T>(itemCurrent : T) => {
+                            if (storableSpec.operation === 'clear') {
+                                // `undefined` indicates removal
+                                return undefined;
+                            }
+                            
                             const itemUpdated = storableSpec.accessor(result);
                             
                             const item = updateItem(
@@ -229,8 +237,9 @@ export default (configPartial : Partial<Config> = {}) => {
                         );
                         const actionType = locationToReduxActionType(config.prefix, location);
                         
+                        // Informative action (not an actual lifecycle action, because we do not know the location)
                         store.dispatch({
-                            [lifecycleActionKey]: null,
+                            //[lifecycleActionKey]: null,
                             type: `${actionType}:failed`,
                             state: 'failed',
                             path: location,
