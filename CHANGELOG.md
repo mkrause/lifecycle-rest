@@ -1,6 +1,10 @@
 
 # Changelog
 
+- v0.4.x
+  - Treat `undefined` as removal in redux reducer
+  - Dependency updates
+
 - v0.3.x
   - Major rewrite: codebase rewritten from ground up in TypeScript.
 

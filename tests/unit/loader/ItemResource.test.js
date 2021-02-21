@@ -118,7 +118,9 @@ describe('ItemResource', () => {
             it('should be supported as default method', async () => {
                 const result = await apiStandard.users['alice'].delete();
                 
-                expect(result).to.equal(undefined);
+                expect(result).to.deep.equal({
+                    response: undefined,
+                });
             });
         });
         

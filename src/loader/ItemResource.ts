@@ -29,6 +29,8 @@ export type ItemResourceT<S extends ItemSchema> = Resource<S>;
     //& { [resourceDef] : { spec : {} } }; // Can extend, if needed
 
 
+export type DeleteResponse = { response : unknown };
+
 const defaultMethods = {
     async head<S extends ItemSchema>(this : ItemResourceT<S>, params = {}) : Promise<AxiosResponse> {
         const { agent, schema, adapter, ...spec } = this[resourceDef];
@@ -68,11 +70,19 @@ const defaultMethods = {
         },
     
     async delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
-        : Promise<void> {
+        : Promise<DeleteResponse> {
             const { agent, schema, adapter, ...spec } = this[resourceDef];
             
             const response = await agent.delete(spec.uri, { params });
-            return response.data;
+            const responseData = response.data;
+            
+            const responseParsed = typeof responseData === 'string' && responseData.trim() === ''
+                ? undefined
+                : responseData;
+            
+            return {
+                response: responseParsed,
+            };
         },
     
     async post<S extends ItemSchema>(this : ItemResourceT<S>, body : unknown, params = {})
@@ -116,12 +126,12 @@ const itemDefaults = {
             },
         
         delete<S extends ItemSchema>(this : ItemResourceT<S>, instanceEncoded : unknown, params = {})
-            : StorablePromise<void> {
+            : StorablePromise<DeleteResponse> {
                 return makeStorable(
                     Function.prototype.call.call(defaultMethods.delete, this, instanceEncoded, params),
                     {
                         location: this[resourceDef].store,
-                        operation: 'put',
+                        operation: 'clear',
                     },
                 );
             },

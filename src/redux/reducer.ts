@@ -26,7 +26,7 @@ type ReducerConfig = {
 };
 
 
-type Updater = <T>(item : Loadable<T>) => Loadable<T>;
+type Updater = <T>(item : Loadable<T>) => undefined | Loadable<T>;
 
 
 // `updatePlainObjectAsRecord` treats objects as closed records, `updatePlainObject` below allows objects to be
@@ -64,7 +64,14 @@ const updatePlainObject = (state : object, step : Location.Step, updateChild : (
     const propUpdated = ObjectUtil.hasOwnProp(state, propKey)
         ? updateChild(state[propKey])
         : updateChild(undefined);
-    return { ...state, [propKey]: propUpdated };
+    if (typeof propUpdated === 'undefined') {
+        // Delete property
+        const stateUpdated : any = { ...state };
+        delete stateUpdated[propKey];
+        return stateUpdated;
+    } else {
+        return { ...state, [propKey]: propUpdated };
+    }
 };
 
 const updateArray = (state : Array<unknown>, step : Location.Step, updateChild : (value : unknown) => unknown) => {
@@ -84,9 +91,18 @@ const updateArray = (state : Array<unknown>, step : Location.Step, updateChild :
         throw new TypeError($msg`No such index ${index} in array`);
     }
     
-    return Object.assign([...state], {
-        [index]: updateChild(state[index]),
-    });
+    const entryUpdated = updateChild(state[index]);
+    if (typeof entryUpdated === 'undefined') {
+        // Delete array entry
+        // TODO: should we slice out this array entry altogether?
+        return Object.assign([...state], {
+            [index]: undefined,
+        });
+    } else {
+        return Object.assign([...state], {
+            [index]: entryUpdated,
+        });
+    }
 };
 
 const updateMap = <K, V>(state : Map<K, V>, step : Location.Step, updateChild : (value : V) => V) => {
@@ -100,8 +116,13 @@ const updateMap = <K, V>(state : Map<K, V>, step : Location.Step, updateChild : 
     
     const value = state.get(key) as V; // Should exist (due to check above)
     
-    mapUpdated.set(key, updateChild(value));
-    return mapUpdated;
+    const entryUpdated = updateChild(value);
+    if (typeof entryUpdated === 'undefined') {
+        mapUpdated.delete(key);
+    } else {
+        mapUpdated.set(key, entryUpdated);
+        return mapUpdated;
+    }
 };
 
 
