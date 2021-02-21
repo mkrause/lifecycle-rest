@@ -86,6 +86,13 @@ describe('integration - REST API with redux store', () => {
             loading: false,
             error: null,
         });
+        
+        // Each entry should be `Loadable` (should still have a status)
+        // expect(store.getState().users['alice']).to.have.property(status).to.deep.equal({
+        //     ready: true,
+        //     loading: false,
+        //     error: null,
+        // });
     });
     
     it('should support indexing into a collection', async () => {

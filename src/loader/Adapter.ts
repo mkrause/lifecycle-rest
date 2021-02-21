@@ -14,7 +14,7 @@ import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
-const makeAdapter = <S extends Schema<unknown>>(resource : ResourceDefinition<S>, schema : S) => ({
+const makeAdapter = <S extends Schema<unknown>>(resource : ResourceDefinition<S>, schema : S = resource.schema) => ({
     with(schema : Schema) {
         return makeAdapter(resource, schema);
     },
@@ -25,13 +25,13 @@ const makeAdapter = <S extends Schema<unknown>>(resource : ResourceDefinition<S>
     },
     
     decode(input : unknown) {
-        const { agent, schema, adapter } = resource;
+        const { agent, adapter } = resource;
         
         return adapter.report(schema.decode(input));
     },
     
     encode(instance : unknown) {
-        const { agent, schema, adapter } = resource;
+        const { agent, adapter } = resource;
         
         return schema.encode(instance);
     },

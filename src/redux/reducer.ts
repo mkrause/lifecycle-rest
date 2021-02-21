@@ -290,7 +290,7 @@ export default (configPartial : Partial<ReducerConfig> = {}) : Reducer<State> =>
             return updateIn(state, action.path, action.update);
         } catch (e) {
             if (e.location && Location.isLocation(e.location)) {
-                e.message += ` [at ${Location.locationAsString(e.location)}`;
+                e.message += ` [at ${Location.locationAsString(e.location)}]`;
             }
             throw e;
         }

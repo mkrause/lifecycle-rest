@@ -237,6 +237,7 @@ export default (configPartial : Partial<Config> = {}) => {
                             requestId,
                             
                             reason,
+                            // TODO: missing `update`
                         });
                         return;
                     }
