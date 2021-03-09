@@ -188,14 +188,29 @@ const updateIn = (state : State, path : StatePath, updater : Updater) : State =>
     
     // Handle items that are Loadable (i.e. have a status associated)
     if (Loadable.isLoadable(state)) {
+        const stateItem = Loadable.getItem(state);
+        
+        if (!Loadable.getStatus(state).ready) {
+            // Special case: indexing into object
+            // FIXME: need better handling for this
+            if (typeof stateItem === 'object' && stateItem !== null && Location.isIndexStep(step)) {
+                // Continue
+            } else {
+                throw Object.assign(
+                    new TypeError($msg`Trying to set property on state that is not yet loaded`),
+                    { location: path },
+                );
+            }
+        }
+        
         // @ts-ignore
-        const stateUpdated = updateIn(state[Loadable.item], path, updater);
+        const stateUpdated = updateIn(stateItem, path, updater);
         
         // TODO: what do we do with the status? May need to be updated/invalidated
         return Loadable.update(state, stateUpdated, {
-            ready: false,
-            loading: false,
-            error: null,
+            //ready: false,
+            //loading: false,
+            //error: null,
         });
     }
     

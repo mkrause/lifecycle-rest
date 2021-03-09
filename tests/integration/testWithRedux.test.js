@@ -113,7 +113,7 @@ describe('integration - REST API with redux store', () => {
         });
         
         expect(store.getState().users).to.have.property(status).to.deep.equal({
-            ready: false, // Invalidated
+            ready: true, // TODO: invalidated?
             loading: false,
             error: null,
         });
@@ -140,7 +140,7 @@ describe('integration - REST API with redux store', () => {
         });
         
         expect(store.getState().users).to.have.property(status).to.deep.equal({
-            ready: false, // Invalidated (TODO: does this make sense?)
+            ready: true, // TODO: invalidated?
             loading: false,
             error: null,
         });
