@@ -140,7 +140,7 @@ const collectionDefaults = {
                 return makeStorable(Function.prototype.call.call(defaultMethods.create, this, instance, params), {
                     location: (result : unknown) => {
                         if (typeof result === 'undefined') {
-                            return [...store, undefined];
+                            return [...store, undefined] as unknown as Location.Location; // FIXME
                         }
                         
                         try {
