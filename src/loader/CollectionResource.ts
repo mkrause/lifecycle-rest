@@ -154,7 +154,7 @@ const collectionDefaults = {
                                 throw new TypeError(`Key does not exist on ${result}`);
                             }
                             
-                            return [...store, index];
+                            return [...store, { index }];
                         } catch (e) {
                             throw new TypeError($msg`Cannot get key of result: ${result}, reason: ${e}`);
                         }

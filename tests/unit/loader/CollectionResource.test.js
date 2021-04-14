@@ -126,7 +126,7 @@ describe('CollectionResource', () => {
                 const result = await promise;
                 
                 expect(result).to.deep.equal({ user_id: 'user42', name: 'Zackary' });
-                expect(promise[storableKey].location(result)).to.deep.equal(['users', 'user42']);
+                expect(promise[storableKey].location(result)).to.deep.equal(['users', { index: 'user42' }]);
             });
         });
     });
