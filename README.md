@@ -23,7 +23,7 @@ const agent = createAgent({
     baseURL: 'https://example.com/api',
 });
 
-const api = RestApi({ agent }, {
+const api = RestApi({ agent }, RestApi.Item(t.unknown, {
     resources: {
         users: RestApi.Collection(UsersCollection, {
             uri: 'users',
@@ -39,7 +39,7 @@ const api = RestApi({ agent }, {
             entry: RestApi.Item(User),
         }),
     },
-});
+}));
 
 // Call the API directly
 const users = await api.users.list(); // GET /api/users
@@ -75,7 +75,7 @@ const agent = createAgent({
 The API definition consists of a tree of *resource definitions*. A resource definition describes some [REST resource](https://stackoverflow.com/questions/10799198/what-are-rest-resources) in your API. For example, you might have an endpoint `hello` that takes a name and returns a greeting. You could define that resource as follows:
 
 ```js
-const greetingApi = RestApi({ agent }, RestApi.Item(t.any, {
+const greetingApi = RestApi({ agent }, RestApi.Item(t.unknown, {
     uri: 'hello',
 }));
 
@@ -86,7 +86,7 @@ const greeting = await greetingApi.get({ name: 'Bob' }); // Returns "Hello Bob!"
 Each resource may have *subresources*. Subresources are accessed as properties on the resulting API client:
 
 ```js
-const api = RestApi({ agent }, RestApi.Item(t.any, {
+const api = RestApi({ agent }, RestApi.Item(t.unknown, {
     resources: {
         users: RestApi.Collection(UsersCollection),
     },
@@ -119,7 +119,7 @@ Configuration:
 Custom methods can be defined as follows:
 
 ```js
-const api = RestApi({ agent }, RestApi.Item(t.any, {
+const api = RestApi({ agent }, RestApi.Item(t.unknown, {
     methods: {
         @RestApi.method()
         async getCustom({ agent, uri }, ...args) {
