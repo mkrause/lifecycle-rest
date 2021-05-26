@@ -176,7 +176,7 @@ There are a number of methods implemented on this resource by default:
 import { createStore, applyMiddleware } from 'redux';
 import { redux as lifecycleRedux } from '@mkrause/lifecycle-rest';
 
-const lifecycleMiddleware = lifecycleRedux.middleware;
+const lifecycleMiddleware = lifecycleRedux.middleware();
 const store = createStore(reducer, initialState, applyMiddleware(lifecycleMiddleware));
 ```
 
@@ -195,7 +195,7 @@ This will result in two actions being dispatched: a *loading* action right at th
 import { createStore, applyMiddleware } from 'redux';
 import { redux as lifecycleRedux } from '@mkrause/lifecycle-rest';
 
-const lifecycleMiddleware = lifecycleRedux.middleware;
+const lifecycleMiddleware = lifecycleRedux.middleware();
 const reducers = [lifecycleRedux.reducer]; // Add your own reducers
 
 const reducer = (state, action) =>
