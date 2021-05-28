@@ -1,6 +1,6 @@
 
 // @ts-ignore
-import merge from 'object-merge-advanced';
+import { mergeAdvanced as merge } from 'object-merge-advanced';
 
 import { Object as ObjectT } from 'ts-toolbelt';
 
