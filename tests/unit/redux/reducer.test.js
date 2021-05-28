@@ -16,30 +16,6 @@ import createLifecycleReducer from '../../../lib-esm/redux/reducer.js';
 
 chai.use(chaiMatchPattern);
 
-// Polyfill for Object.entries/Object.fromEntries for Node v10
-if (!Object.entries) {
-    Object.entries = obj => {
-        const ownProps = Object.keys(obj);
-        let i = ownProps.length;
-        const resArray = new Array(i);
-        while (i--) {
-            resArray[i] = [ownProps[i], obj[ownProps[i]]];
-        }
-        
-        return resArray;
-    };
-}
-if (!Object.fromEntries) {
-    Object.fromEntries = _entries => {
-        const entries = Array.isArray(_entries) ? _entries : [..._entries];
-        
-        return entries.reduce(
-            (acc, [key, value]) => { acc[key] = value; return acc; },
-            {}
-        );
-    };
-}
-
 
 const MapFromObject = obj => new Map(Object.entries(obj));
 const MapToObject = map => Object.fromEntries(map.entries());
@@ -211,7 +187,19 @@ describe('redux reducer', () => {
                 });
                 
                 const action2 = lifecycleAction({
-                    path: ['ordering', '1'], // Index can also be a string
+                    path: ['ordering', '1'], // Index can also be a numerical string
+                    state: 'ready',
+                    item: { name: 'baz' },
+                });
+                
+                const action3 = lifecycleAction({
+                    path: ['ordering', { index: 0 }], // Index can be an index step
+                    state: 'ready',
+                    item: { name: 'baz' },
+                });
+                
+                const action4 = lifecycleAction({
+                    path: ['ordering', { index: '1' }], // Index step can also be a numerical string
                     state: 'ready',
                     item: { name: 'baz' },
                 });
@@ -220,6 +208,12 @@ describe('redux reducer', () => {
                     ordering: [{ name: 'baz' }, { name: 'bar' }],
                 });
                 expect(reduce(state, action2)).deep.equal({
+                    ordering: [{ name: 'foo' }, { name: 'baz' }],
+                });
+                expect(reduce(state, action3)).deep.equal({
+                    ordering: [{ name: 'baz' }, { name: 'bar' }],
+                });
+                expect(reduce(state, action4)).deep.equal({
                     ordering: [{ name: 'foo' }, { name: 'baz' }],
                 });
             });

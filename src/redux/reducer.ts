@@ -75,16 +75,21 @@ const updatePlainObject = (state : object, step : Location.Step, updateChild : (
 };
 
 const updateArray = (state : Array<unknown>, step : Location.Step, updateChild : (value : unknown) => unknown) => {
+    let stepIndex: unknown = step;
+    if (Location.isIndexStep(step)) {
+        stepIndex = step.index;
+    }
+    
     let index : number;
-    if (typeof step === 'number') {
-        index = step;
-    } else if (typeof step === 'string') {
-        if (!/^[0-9]+$/.test(step)) {
-            throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step}`);
+    if (typeof stepIndex === 'number') {
+        index = stepIndex;
+    } else if (typeof stepIndex === 'string') {
+        if (!/^[0-9]+$/.test(stepIndex)) {
+            throw new TypeError($msg`Trying to set in array, but given non-numerical index ${stepIndex}`);
         }
-        index = parseInt(step);
+        index = parseInt(stepIndex);
     } else {
-        throw new TypeError($msg`Trying to set in array, but given non-numerical index ${step}`);
+        throw new TypeError($msg`Trying to set in array, but given non-numerical index ${stepIndex}`);
     }
     
     if (!(index in state)) {
