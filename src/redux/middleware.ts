@@ -93,7 +93,8 @@ const updateItem = <T, U>(itemCurrent : undefined | T, status : Status, itemUpda
                 return Loadable.asLoading(itemCurrent);
             }
         } else {
-            return itemCurrent; // No status to update, just leave as is
+            // No status to update, just update the item
+            return typeof itemUpdated !== 'undefined' ? itemUpdated : itemCurrent;
         }
     } else if (status.error instanceof Error) {
         if (isLoadable(itemUpdated)) {
@@ -105,7 +106,8 @@ const updateItem = <T, U>(itemCurrent : undefined | T, status : Status, itemUpda
                 return Loadable.asFailed(itemCurrent, status.error);
             }
         } else {
-            return itemCurrent; // No status to update, just leave as is
+            // No status to update, just update the item
+            return typeof itemUpdated !== 'undefined' ? itemUpdated : itemCurrent;
         }
     } else if (status.ready) {
         if (typeof itemUpdated === 'undefined') {
@@ -117,7 +119,8 @@ const updateItem = <T, U>(itemCurrent : undefined | T, status : Status, itemUpda
         } else if (isLoadable(itemCurrent)) {
             return Loadable.update(itemCurrent, itemUpdated, { ready: true });
         } else {
-            return itemCurrent; // No status to update, just leave as is
+            // No status to update, just update the item
+            return typeof itemUpdated !== 'undefined' ? itemUpdated : itemCurrent;
         }
     }
     

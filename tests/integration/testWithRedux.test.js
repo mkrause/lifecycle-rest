@@ -98,6 +98,38 @@ describe('integration - REST API with redux store', () => {
         // });
     });
     
+    it('should support creating an entry', async () => {
+        const store = Redux.createStore(
+            createLifecycleReducer(),
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware),
+        );
+        
+        await store.dispatch(api.users.list());
+        
+        const zoe = {
+            name: 'Zoe',
+            score: 999,
+            posts: {},
+        };
+        
+        const result = await store.dispatch(api.users.create(zoe));
+        
+        expect(result).to.deep.equal({ ...zoe, user_id: 'user42' });
+        
+        expect(store.getState().users).to.have.property(status).to.deep.equal({
+            ready: true,
+            loading: false,
+            error: null,
+        });
+        expect(store.getState()).to.deep.equal({
+            users: {
+                ...usersMock,
+                'user42': { ...zoe, user_id: 'user42' },
+            },
+        });
+    });
+    
     it('should support indexing into a collection', async () => {
         const store = Redux.createStore(
             createLifecycleReducer(),
@@ -156,7 +188,7 @@ describe('integration - REST API with redux store', () => {
         });
     });
     
-    it('should support creating an entry', async () => {
+    it('should support updating an entry', async () => {
         const store = Redux.createStore(
             createLifecycleReducer(),
             initialState,
@@ -165,15 +197,11 @@ describe('integration - REST API with redux store', () => {
         
         await store.dispatch(api.users.list());
         
-        const zoe = {
-            name: 'Zoe',
-            score: 999,
-            posts: {},
-        };
+        const patchAlice = { name: 'Alice @' };
         
-        const result = await store.dispatch(api.users.create(zoe));
+        const result = await store.dispatch(api.users('alice').patch(patchAlice));
         
-        expect(result).to.deep.equal({ ...zoe, user_id: 'user42' });
+        expect(result).to.deep.equal({ ...usersMock.alice, ...patchAlice });
         
         expect(store.getState().users).to.have.property(status).to.deep.equal({
             ready: true,
@@ -183,7 +211,7 @@ describe('integration - REST API with redux store', () => {
         expect(store.getState()).to.deep.equal({
             users: {
                 ...usersMock,
-                'user42': { ...zoe, user_id: 'user42' },
+                alice: { ...usersMock.alice, ...patchAlice },
             },
         });
     });
