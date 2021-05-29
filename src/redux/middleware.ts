@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import merge from '../util/merge.js';
 
 import type { Status } from '@mkrause/lifecycle-loader';
-import { isLoadable, Loadable, status } from '@mkrause/lifecycle-loader';
+import { isLoadable, Loadable, status, isProxyable } from '@mkrause/lifecycle-loader';
 import * as Location from '../loader/Location.js';
 import type { StorableSpec, StorablePromise } from '../loader/StorablePromise.js';
 import makeStorable, { isStorable, storableKey } from '../loader/StorablePromise.js';
@@ -72,7 +72,17 @@ const dispatchLoading = <T>(
 
 
 // Consolidate a current item (possibly `Loadable`) with an updated item (possibly `Loadable`)
-const updateItem = <T, U>(itemCurrent : T, status : Status, itemUpdated ?: undefined | U) => {
+const updateItem = <T, U>(itemCurrent : undefined | T, status : Status, itemUpdated ?: undefined | U) => {
+    if (typeof itemCurrent === 'undefined') {
+        if (isLoadable(itemUpdated)) {
+            return Loadable.updateStatus(itemUpdated, status);
+        } else if (isProxyable(itemUpdated)) {
+            return Loadable.updateStatus(Loadable(itemUpdated), status);
+        } else {
+            return itemUpdated;
+        }
+    }
+    
     if (status.loading === true) {
         if (isLoadable(itemUpdated)) {
             return Loadable.asLoading(itemUpdated);

@@ -18,7 +18,7 @@ import { isStorable, makeStorable } from './StorablePromise.js';
 
 /*
 Create a REST API loader from an API specification. The API specification is built up from a hierarchy of "resource"
-specifications. Each resource specification should describe a REST resource your API (an endpoint, essentially).
+specifications. Each resource specification should describe a REST resource of your API (an endpoint, essentially).
 
 The actual HTTP requests are delegated to the given *agent*.
 */
@@ -59,7 +59,7 @@ type MethodOptions = {
     storable ?: boolean | Partial<StorableSpec<unknown>>
 };
 RestApi.method = ({ storable = true } : MethodOptions = {}) =>
-    (target : unknown, key : PropertyKey, descriptor : PropertyDescriptor) : PropertyDescriptor => {
+    (_target : unknown, _key : PropertyKey, descriptor : PropertyDescriptor) : PropertyDescriptor => {
         if (typeof descriptor.value !== 'function') {
             return descriptor;
         }

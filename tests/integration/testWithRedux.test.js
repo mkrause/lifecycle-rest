@@ -42,6 +42,9 @@ describe('integration - REST API with redux store', () => {
         uri: '/api',
         resources: {
             users: RestApi.Collection(t.record(t.string, User), {
+                getKey(user) {
+                    return user.user_id;
+                },
                 entry: RestApi.Item(User, {
                     resources: {
                         posts: RestApi.Collection(t.record(t.string, Post), {
@@ -149,6 +152,38 @@ describe('integration - REST API with redux store', () => {
                 alice: usersMock.alice,
                 //bob: usersMock.bob, // Deleted
                 john: usersMock.john,
+            },
+        });
+    });
+    
+    it('should support creating an entry', async () => {
+        const store = Redux.createStore(
+            createLifecycleReducer(),
+            initialState,
+            Redux.applyMiddleware(lifecycleMiddleware),
+        );
+        
+        await store.dispatch(api.users.list());
+        
+        const zoe = {
+            name: 'Zoe',
+            score: 999,
+            posts: {},
+        };
+        
+        const result = await store.dispatch(api.users.create(zoe));
+        
+        expect(result).to.deep.equal({ ...zoe, user_id: 'user42' });
+        
+        expect(store.getState().users).to.have.property(status).to.deep.equal({
+            ready: true,
+            loading: false,
+            error: null,
+        });
+        expect(store.getState()).to.deep.equal({
+            users: {
+                ...usersMock,
+                'user42': { ...zoe, user_id: 'user42' },
             },
         });
     });
