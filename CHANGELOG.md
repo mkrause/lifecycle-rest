@@ -2,13 +2,14 @@
 # Changelog
 
 - v0.5.x
-  - Drop support for Node v10
-  - Drop support for some older browsers (including all versions of IE)
-  - Fixed bug where { index } step on array was not handled correctly
+  - Drop support for Node v10.
+  - Drop support for some older browsers (including all versions of IE).
+  - Fixed bug where { index } step on array was not handled correctly.
+  - Introduce `RestApi.decorateMethod()` as alternative for `@RestApi.method` legacy decorator syntax.
 
 - v0.4.x
-  - Treat `undefined` as removal in redux reducer
-  - Dependency updates
+  - Treat `undefined` as removal in redux reducer.
+  - Dependency updates.
 
 - v0.3.x
   - Major rewrite: codebase rewritten from ground up in TypeScript.

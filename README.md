@@ -30,10 +30,9 @@ const api = RestApi({ agent }, RestApi.Item(t.unknown, {
             
             // Custom methods
             methods: {
-                @RestApi.method()
-                async search({ agent, uri }, query) {
+                search: RestApi.decorateMethod(async ({ agent, uri }, query) => {
                     return await agent.get(uri, query);
-                },
+                }),
             },
             
             entry: RestApi.Item(User),
@@ -121,12 +120,11 @@ Custom methods can be defined as follows:
 ```js
 const api = RestApi({ agent }, RestApi.Item(t.unknown, {
     methods: {
-        @RestApi.method()
-        async getCustom({ agent, uri }, ...args) {
+        getCustom: RestApi.decorateMethod(async ({ agent, uri }, ...args) => {
             // Here, the first argument is the resource definition, and `args` contains any remaining arguments
             
             return await agent.get(uri);
-        },
+        }),
     },
 }));
 
