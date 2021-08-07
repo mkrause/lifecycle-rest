@@ -6,6 +6,7 @@
   - Drop support for some older browsers (including all versions of IE).
   - Fixed bug where { index } step on array was not handled correctly.
   - Introduce `RestApi.decorateMethod()` as alternative for `@RestApi.method` legacy decorator syntax.
+  - [0.5.4] Export `DecodeError`
 
 - v0.4.x
   - Treat `undefined` as removal in redux reducer.

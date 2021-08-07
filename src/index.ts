@@ -1,4 +1,5 @@
 
+export { DecodeError } from './schema/Schema';
 export { resourceDef } from './loader/Resource.js';
 
 export { default as createAgent } from './agent.js';

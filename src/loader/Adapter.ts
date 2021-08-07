@@ -9,8 +9,8 @@ import { ResourceDefinition } from './Resource.js';
 import { AxiosResponse } from 'axios';
 
 import * as t from 'io-ts';
-import { isLeft } from 'fp-ts/lib/Either';
-import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+//import { isLeft } from 'fp-ts/lib/Either';
+//import { Errors as ValidationErrors, ValidationError } from 'io-ts';
 import { PathReporter } from 'io-ts/lib/PathReporter.js';
 
 
