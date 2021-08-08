@@ -1,5 +1,5 @@
 
-import merge from './util/merge.js';
+import merge from './util/merge';
 
 import axios, { AxiosRequestConfig, AxiosInstance } from 'axios';
 
@@ -15,12 +15,12 @@ const optionsDefaults : AxiosRequestConfig = {
     },
     
     validateStatus(status) {
-      return status >= 200 && status < 300;
+        return status >= 200 && status < 300;
     },
     
     // Whether to send browser cookies along with the request
     withCredentials: false,
 };
 
-export default (options : AxiosRequestConfig = {}) : AxiosInstance =>
+export default (options : Partial<AxiosRequestConfig> = {}) : AxiosInstance =>
     axios.create(merge(optionsDefaults, options) as AxiosRequestConfig);

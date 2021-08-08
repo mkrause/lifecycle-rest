@@ -1,6 +1,6 @@
 
 import * as t from 'io-ts';
-import { Errors as ValidationErrors, ValidationError } from 'io-ts';
+import type { Errors as ValidationErrors, ValidationError } from 'io-ts';
 
 
 export interface Schema<A = unknown> extends t.Type<A, unknown, unknown> {};

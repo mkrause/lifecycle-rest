@@ -2,13 +2,13 @@
 import match from 'case-match';
 import $msg from 'message-tag';
 
-import merge from '../util/merge.js';
-import * as ObjectUtil from '../util/ObjectUtil.js';
+import merge from '../util/merge';
+import * as ObjectUtil from '../util/ObjectUtil';
 
 import { Reducer } from 'redux';
 import { Loadable } from '@mkrause/lifecycle-loader';
-import * as Location from '../loader/Location.js';
-import { isLifecycleAction } from './middleware.js';
+import * as Location from '../loader/Location';
+import { isLifecycleAction } from './middleware';
 
 
 type State = unknown;

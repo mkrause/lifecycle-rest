@@ -1,10 +1,10 @@
 
 import $msg from 'message-tag';
-import * as ObjectUtil from '../util/ObjectUtil.js';
+import * as ObjectUtil from '../util/ObjectUtil';
 
 import type { Action as ReduxAction } from 'redux';
 
-import * as Location from './Location.js';
+import * as Location from './Location';
 
 
 /*

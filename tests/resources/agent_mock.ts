@@ -14,7 +14,13 @@ Simple mock REST API endpoint
 // Note: this module should be completely stateless. Do not actually update any state, just return a response
 // indicating that the state update was successful. (Use `Object.freeze()` to enforce.)
 
-export const users = Object.freeze({
+type User = {
+    name: string,
+    score: number,
+    posts: Record<number, { title: string }>,
+};
+
+export const users: Record<string, User> = Object.freeze({
     alice: {
         name: 'Alice',
         score: 101,
@@ -44,7 +50,7 @@ const handleRequest = async request => {
     let matches;
     if (url === '/api' && method === 'get') {
         const item = {
-            version: 42,
+            version: 42 as number | string,
         };
         
         // Simulate a bug in the response
@@ -63,11 +69,11 @@ const handleRequest = async request => {
         }
     } else if (url === '/api/users') {
         if (method === 'get') {
-            let usersResponse = users;
+            let usersResponse: Record<string, User> | Array<User & { id: string }> = users;
             
             if (params.format === 'map') { usersResponse = users; }
             if (params.format === 'list') {
-                usersResponse = Object.entries(users).map(([key, value]) => ({ id: key, ...value }));
+                usersResponse = Object.entries(users).map(([key, user]) => ({ id: key, ...user }));
             }
             
             return { status: 200, data: usersResponse };
@@ -111,7 +117,7 @@ const handleRequest = async request => {
             // See: https://www.restapitutorial.com/lessons/httpmethods.html
             return { status: 409 };
         } else if (method === 'get') {
-            let userResponse = user;
+            let userResponse: any = user;
             
             if (params.bug === 'wrong-type') { userResponse = 'string'; }
             if (params.bug === 'extra-properties') { userResponse.nonexistent = true; }
@@ -170,7 +176,7 @@ const handleRequest = async request => {
             // See: https://www.restapitutorial.com/lessons/httpmethods.html
             return { status: 409 };
         } else if (method === 'get') {
-            let postResponse = post;
+            let postResponse = user.posts[postId];
             
             return { status: 200, data: postResponse };
         } else {

@@ -11,16 +11,16 @@ import * as t from 'io-ts';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../../lib-esm/agent.js';
-// import StorablePromise from '../../../lib-esm/loader/StorablePromise.js';
-// import { SimpleItem } from '../../../lib-esm/loader/Resource.js';
-import { Unknown } from '../../../lib-esm/schema/Schema.js';
-import agentMock, { users as apiMockUsers } from '../../resources/agent_mock.js';
+import createAgent from '../../../src/agent';
+// import StorablePromise from '../../../src/loader/StorablePromise';
+// import { SimpleItem } from '../../../src/loader/Resource';
+import { Unknown } from '../../../src/schema/Schema';
+import agentMock, { users as apiMockUsers } from '../../resources/agent_mock';
 
-import adapter from '../../../lib-esm/loader/Adapter.js';
-import { DecodeError } from '../../../lib-esm/schema/Schema.js';
-import { resourceDef } from '../../../lib-esm/loader/Resource.js';
-import ItemResource from '../../../lib-esm/loader/ItemResource.js';
+import adapter from '../../../src/loader/Adapter';
+import { DecodeError } from '../../../src/schema/Schema';
+import { resourceDef } from '../../../src/loader/Resource';
+import ItemResource from '../../../src/loader/ItemResource';
 
 import ResourceCommonTests from './ResourceCommonTests.js';
 

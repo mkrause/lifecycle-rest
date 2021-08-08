@@ -1,22 +1,22 @@
 
-import env from '../util/env.js';
+import env from '../util/env';
 
 import $msg from 'message-tag';
 import $uri from 'uri-tag';
-import merge, { Merge } from '../util/merge.js';
-import * as ObjectUtil from '../util/ObjectUtil.js';
-import { concatUri } from '../util/uri.js';
+import merge, { Merge } from '../util/merge';
+import * as ObjectUtil from '../util/ObjectUtil';
+import { concatUri } from '../util/uri';
 
-import { Schema, DecodeError } from '../schema/Schema.js';
+import { Schema, DecodeError } from '../schema/Schema';
 import * as t from 'io-ts';
 
 import { AxiosResponse } from 'axios';
-import type { ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource.js';
-import { resourceDef, intantiateSpec } from './Resource.js';
+import type { ResourcePath, URI, StorePath, Agent, Context, ResourceDefinition, Resource, ResourceCreator, ResourceSpec } from './Resource';
+import { resourceDef, intantiateSpec } from './Resource';
 
-import Adapter, { AdapterT } from './Adapter.js';
+import Adapter, { AdapterT } from './Adapter';
 
-import { StorablePromise, makeStorable } from './StorablePromise.js';
+import { StorablePromise, makeStorable } from './StorablePromise';
 
 
 export type ItemSchema = Schema;

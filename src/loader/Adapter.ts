@@ -1,17 +1,17 @@
 
 import $msg from 'message-tag';
 
-import { Schema, DecodeError } from '../schema/Schema.js';
+import { Schema, DecodeError } from '../schema/Schema';
 
-import type { Resource } from './Resource.js';
-import { ResourceDefinition } from './Resource.js';
+import type { Resource } from './Resource';
+import { ResourceDefinition } from './Resource';
 
 import { AxiosResponse } from 'axios';
 
 import * as t from 'io-ts';
 //import { isLeft } from 'fp-ts/lib/Either';
 //import { Errors as ValidationErrors, ValidationError } from 'io-ts';
-import { PathReporter } from 'io-ts/lib/PathReporter.js';
+import { PathReporter } from 'io-ts/lib/PathReporter';
 
 
 const makeAdapter = <S extends Schema<unknown>>(resource : ResourceDefinition<S>, schema : S = resource.schema) => ({

@@ -2,10 +2,10 @@
 import $msg from 'message-tag';
 import type { AxiosInstance } from 'axios';
 
-import { Schema } from '../schema/Schema.js';
+import { Schema } from '../schema/Schema';
 
-import type { AdapterT } from './Adapter.js';
-import * as Location from './Location.js';
+import type { AdapterT } from './Adapter';
+import * as Location from './Location';
 
 
 export type Agent = AxiosInstance;
@@ -45,9 +45,9 @@ export type ResourceCreator<S extends Schema> = {
 
 // Resource specifications
 
-import merge, { Merge } from '../util/merge.js';
-import * as ObjectUtil from '../util/ObjectUtil.js';
-import { concatUri } from '../util/uri.js';
+import merge, { Merge } from '../util/merge';
+import * as ObjectUtil from '../util/ObjectUtil';
+import { concatUri } from '../util/uri';
 
 
 export type ResourceSpec<S extends Schema> = {

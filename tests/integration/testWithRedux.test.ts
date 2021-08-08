@@ -1,4 +1,5 @@
 
+import 'mocha';
 import chai, { assert, expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import chaiMatchPattern from 'chai-match-pattern';
@@ -11,18 +12,18 @@ import * as t from 'io-ts';
 
 import { status, Loadable } from '@mkrause/lifecycle-loader';
 
-import createAgent from '../../lib-esm/agent.js';
-import { Unknown } from '../../lib-esm/schema/Schema.js';
+import createAgent from '../../src/agent.js';
+import { Unknown } from '../../src/schema/Schema.js';
 import agentMock, { users as usersMock } from '../resources/agent_mock.js';
 
-import { DecodeError } from '../../lib-esm/schema/Schema.js';
-import { resourceDef } from '../../lib-esm/loader/Resource.js';
-import RestApi from '../../lib-esm/loader/RestApi.js';
+import { DecodeError } from '../../src/schema/Schema.js';
+import { resourceDef } from '../../src/loader/Resource.js';
+import RestApi from '../../src/loader/RestApi.js';
 
 import * as Redux from 'redux';
-import { makeStorable, isStorable, isStorableKey } from '../../lib-esm/loader/StorablePromise.js';
-import createLifecycleMiddleware, { lifecycleActionKey } from '../../lib-esm/redux/middleware.js';
-import createLifecycleReducer from '../../lib-esm/redux/reducer.js';
+import { makeStorable, isStorable, storableKey } from '../../src/loader/StorablePromise.js';
+import createLifecycleMiddleware, { lifecycleActionKey } from '../../src/redux/middleware.js';
+import createLifecycleReducer from '../../src/redux/reducer.js';
 
 
 chai.use(chaiAsPromised);

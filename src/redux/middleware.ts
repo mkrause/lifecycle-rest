@@ -1,13 +1,13 @@
 
 import $msg from 'message-tag';
 import { v4 as uuid } from 'uuid';
-import merge from '../util/merge.js';
+import merge from '../util/merge';
 
 import type { Status } from '@mkrause/lifecycle-loader';
 import { isLoadable, Loadable, status, isProxyable } from '@mkrause/lifecycle-loader';
-import * as Location from '../loader/Location.js';
-import type { StorableSpec, StorablePromise } from '../loader/StorablePromise.js';
-import makeStorable, { isStorable, storableKey } from '../loader/StorablePromise.js';
+import * as Location from '../loader/Location';
+import type { StorableSpec, StorablePromise } from '../loader/StorablePromise';
+import makeStorable, { isStorable, storableKey } from '../loader/StorablePromise';
 
 import type { Store, AnyAction as ReduxAnyAction, Dispatch as ReduxDispatch } from 'redux';
 

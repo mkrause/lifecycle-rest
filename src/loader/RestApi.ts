@@ -1,14 +1,14 @@
 
-import type { Schema } from '../schema/Schema.js';
+import type { Schema } from '../schema/Schema';
 
-import type { Agent, Options, Context, Resource } from './Resource.js';
-import { resourceDef, ResourceDefinition } from './Resource.js';
-import adapter from './Adapter.js';
+import type { Agent, Options, Context, Resource } from './Resource';
+import { resourceDef, ResourceDefinition } from './Resource';
+import adapter from './Adapter';
 
-import ItemResource from './ItemResource.js';
-import CollectionResource from './CollectionResource.js';
+import ItemResource from './ItemResource';
+import CollectionResource from './CollectionResource';
 
-import { makeStorable } from './StorablePromise.js';
+import { makeStorable } from './StorablePromise';
 import * as ResourceMethod from './ResourceMethod';
 
 

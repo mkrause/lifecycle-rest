@@ -1,5 +1,5 @@
 
-import * as ObjectUtil from '../util/ObjectUtil.js';
+import * as ObjectUtil from '../util/ObjectUtil';
 
 
 export type Index = string | number; // TODO: support other index types?

@@ -1,30 +1,28 @@
 
 import { expect } from 'chai';
-import sinon from 'sinon';
 
-import $uri from 'uri-tag';
-import $msg from 'message-tag';
+import createAgent from '../../../src/agent';
+import { Unknown } from '../../../src/schema/Schema';
 
-import createAgent from '../../../lib-esm/agent.js';
-import { Unknown } from '../../../lib-esm/schema/Schema.js';
+import { resourceDef } from '../../../src/loader/Resource';
+import ItemResource from '../../../src/loader/ItemResource';
+import CollectionResource from '../../../src/loader/CollectionResource';
 
-import { resourceDef } from '../../../lib-esm/loader/Resource.js';
-import ItemResource from '../../../lib-esm/loader/ItemResource.js';
-import CollectionResource from '../../../lib-esm/loader/CollectionResource.js';
-
-import RestApi from '../../../lib-esm/loader/RestApi.js';
+import RestApi from '../../../src/loader/RestApi';
 
 
 describe('RestApi', () => {
     const agent = createAgent({
-        adapter: async request => { throw new Error(`Not supported`); },
+        adapter: async () => { throw new Error(`Not supported`); },
     });
     
     it('should require configuration as argument', () => {
+        // @ts-expect-error
         expect(() => { RestApi(); }).to.throw(TypeError);
     });
     
     it('should require a resource creator as argument', () => {
+        // @ts-expect-error
         expect(() => { RestApi({ agent }); }).to.throw(TypeError);
     });
     

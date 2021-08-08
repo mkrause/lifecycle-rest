@@ -1,13 +1,13 @@
 
-import * as ObjectUtil from '../util/ObjectUtil.js';
+import * as ObjectUtil from '../util/ObjectUtil';
 
-import type { Schema } from '../schema/Schema.js';
+import type { Schema } from '../schema/Schema';
 
-import type { Resource } from './Resource.js';
-import { resourceDef, ResourceDefinition } from './Resource.js';
+import type { Resource } from './Resource';
+import { resourceDef, ResourceDefinition } from './Resource';
 
-import type { StorableSpec } from './StorablePromise.js';
-import { isStorable, makeStorable } from './StorablePromise.js';
+import type { StorableSpec } from './StorablePromise';
+import { isStorable, makeStorable } from './StorablePromise';
 
 
 // Resource method utilities
