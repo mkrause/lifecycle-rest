@@ -154,7 +154,7 @@ export default (configPartial : Partial<Config> = {}) => {
         const requestId = uuid();
         
         if (typeof storableSpec.location === 'function') {
-            const location = storableSpec.location(undefined).map(
+            const location = storableSpec.location(undefined, store).map(
                 step => typeof step === 'undefined' ? { index: '<unknown>' } : step
             );
             const actionType = locationToReduxActionType(config.prefix, location);
@@ -194,7 +194,7 @@ export default (configPartial : Partial<Config> = {}) => {
             .then(
                 (result : R) => {
                     const location = typeof storableSpec.location === 'function'
-                        ? storableSpec.location(result)
+                        ? storableSpec.location(result, store)
                         : storableSpec.location;
                     
                     const actionType = locationToReduxActionType(config.prefix, location);
@@ -245,7 +245,7 @@ export default (configPartial : Partial<Config> = {}) => {
                 },
                 (reason : Error) => {
                     if (typeof storableSpec.location === 'function') {
-                        const location = storableSpec.location(undefined).map(
+                        const location = storableSpec.location(undefined, store).map(
                             step => typeof step === 'undefined' ? { index: '<unknown>' } : step
                         );
                         const actionType = locationToReduxActionType(config.prefix, location);
